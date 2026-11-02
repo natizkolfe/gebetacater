@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/lib/client-api";
 import { availableDaboDefoOptions, daboDefoDraftLine } from "@/lib/dabo-defo";
 import { money } from "@/lib/format";
-import { defaultDraft, leadTimeNotice } from "@/lib/orders";
+import { DABO_DEFO_LEAD_DAYS, defaultDraft, leadTimeNotice } from "@/lib/orders";
 import type { PublicSettings } from "@/lib/types";
 
 export function DaboDefoOrder() {
@@ -31,7 +31,7 @@ export function DaboDefoOrder() {
     api<{ settings: PublicSettings }>("/api/settings")
       .then((data) => {
         setSettings(data.settings);
-        setPickupDate(data.settings.earliestCateringDate);
+        setPickupDate(data.settings.earliestDaboDefoDate);
       })
       .catch((reason: Error) => setError(reason.message));
   }, []);
@@ -39,7 +39,7 @@ export function DaboDefoOrder() {
   useEffect(() => {
     if (!hydrated || !settings) return;
     if (draft?.kind === "dabo_defo") {
-      setPickupDate(draft.eventDate || settings.earliestCateringDate);
+      setPickupDate(draft.eventDate || settings.earliestDaboDefoDate);
       setPickupTime(draft.eventTime || "12:00");
       const line = draft.lines[0];
       if (line) {
@@ -84,14 +84,14 @@ export function DaboDefoOrder() {
     <Shell className="max-w-2xl">
       <PageIntro
         eyebrow="Dabo / Defo"
-        title="Fresh Dabo / Defo"
-        lede="Order freshly prepared Habesha Dabo/Defo on its own. No weekly meal or catering package required."
+        title="Habesha Dabo / Defo"
+        lede="Freshly baked Habesha bread in a 9-inch pan. Order it on its own — no weekly meal or catering package required."
       />
 
       <div className="mt-6 rounded-xl border border-border bg-card p-5">
         <p className="text-sm font-medium">Pickup</p>
         <p className="mt-1 text-sm text-muted-foreground">{settings.pickupAddress}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{leadTimeNotice(settings.minimumOrderLeadDays)}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{leadTimeNotice(DABO_DEFO_LEAD_DAYS)}</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="dabo-date">Pickup date</Label>
@@ -99,7 +99,7 @@ export function DaboDefoOrder() {
               id="dabo-date"
               type="date"
               className="h-11 bg-background px-3"
-              min={settings.earliestCateringDate}
+              min={settings.earliestDaboDefoDate}
               value={pickupDate}
               onChange={(event) => setPickupDate(event.target.value)}
             />
@@ -122,8 +122,11 @@ export function DaboDefoOrder() {
           {selected.imageId ? <DishPhoto id={selected.imageId} size="md" /> : null}
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-3xl">{selected.name}</h2>
+            {selected.sizeLabel ? (
+              <p className="mt-1 text-sm font-medium text-primary">{selected.sizeLabel}</p>
+            ) : null}
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{selected.description}</p>
-            <p className="mt-3 text-lg font-medium">{money(selected.price)}</p>
+            <p className="mt-3 text-lg font-medium">{money(selected.price)} each</p>
             {selected.placeholder ? (
               <p className="mt-2 text-xs uppercase tracking-wide text-amber-800">Temporary placeholder price</p>
             ) : null}

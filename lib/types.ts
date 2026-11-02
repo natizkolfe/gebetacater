@@ -287,6 +287,10 @@ export interface PublicSettings extends Settings {
   today: string;
   earliestWeeklyDate: string;
   earliestCateringDate: string;
+  /** To-Go has no advance minimum — usually today. */
+  earliestToGoDate: string;
+  /** Dabo / Defo uses its own 2-day lead time. */
+  earliestDaboDefoDate: string;
 }
 
 export type PromoStatus = "available" | "used" | "disabled";

@@ -11,7 +11,7 @@ const WAYS = [
   },
   {
     title: "Dabo / Defo",
-    detail: "Order freshly prepared Habesha Dabo/Defo separately.",
+    detail: "Fresh Habesha bread baked in a 9-inch pan — order it on its own for pickup.",
     href: "/order/dabo-defo",
     cta: "Order Dabo / Defo",
     image: "/dishes/habesha-defo.jpg",

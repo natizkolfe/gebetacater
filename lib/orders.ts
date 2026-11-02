@@ -108,11 +108,29 @@ export function initialCustomization(item: MenuItem, prefs?: Preferences | null)
   };
 }
 
+/** To-Go can be ordered for the same day. */
+export const TO_GO_LEAD_DAYS = 0;
+
+/** Dabo / Defo needs at least two days to bake. */
+export const DABO_DEFO_LEAD_DAYS = 2;
+
+export function leadDaysForKind(kind: OrderDraft["kind"] | OrderRecord["kind"], kitchenLeadDays: number): number {
+  if (kind === "to_go") return TO_GO_LEAD_DAYS;
+  if (kind === "dabo_defo") return DABO_DEFO_LEAD_DAYS;
+  return kitchenLeadDays;
+}
+
 export function leadTimeNotice(days: number): string {
+  if (days <= 0) return "No advance-order minimum — same-day pickup is available.";
+  if (days === 1) return "Orders require at least 1 day's advance notice.";
   return `Orders require at least ${days} days' advance notice.`;
 }
 
 export function leadTimeError(days: number): string {
+  if (days <= 0) return "Choose today or a later pickup date.";
+  if (days === 1) {
+    return "Please select a date at least 1 day from today so we have enough time to prepare your order.";
+  }
   return `Please select a date at least ${days} days from today so we have enough time to prepare your order.`;
 }
 
@@ -124,10 +142,18 @@ export function publicSettings(settings: Settings, now = new Date()): PublicSett
     today,
     earliestWeeklyDate: addDays(today, lead),
     earliestCateringDate: addDays(today, lead),
+    earliestToGoDate: addDays(today, TO_GO_LEAD_DAYS),
+    earliestDaboDefoDate: addDays(today, DABO_DEFO_LEAD_DAYS),
   };
 }
 
 export function defaultDraft(settings: PublicSettings, kind: OrderDraft["kind"] = "weekly"): OrderDraft {
+  const eventDate =
+    kind === "to_go"
+      ? settings.earliestToGoDate
+      : kind === "dabo_defo"
+        ? settings.earliestDaboDefoDate
+        : settings.earliestCateringDate;
   return {
     kind,
     fulfillment: "pickup",
@@ -135,7 +161,7 @@ export function defaultDraft(settings: PublicSettings, kind: OrderDraft["kind"] 
     durationDays: 7,
     startDate: settings.earliestWeeklyDate,
     guestCount: settings.minCateringGuests,
-    eventDate: settings.earliestCateringDate,
+    eventDate,
     eventTime: "12:00",
     address: "",
     delivery: null,
@@ -554,8 +580,10 @@ export function scheduleProblems(draft: OrderDraft, settings: PublicSettings): s
   if (isSimplePickupKind(draft.kind)) {
     if (draft.fulfillment !== "pickup") return "To-Go and Dabo / Defo orders are pickup only.";
     if (!isIsoDate(draft.eventDate)) return "Choose a valid pickup date.";
-    if (draft.eventDate < settings.earliestCateringDate) {
-      return leadTimeError(settings.minimumOrderLeadDays);
+    const earliest = draft.kind === "to_go" ? settings.earliestToGoDate : settings.earliestDaboDefoDate;
+    const lead = leadDaysForKind(draft.kind, settings.minimumOrderLeadDays);
+    if (draft.eventDate < earliest) {
+      return leadTimeError(lead);
     }
     if (!/^\d{2}:\d{2}$/.test(draft.eventTime)) return "Choose a pickup time.";
     return null;
@@ -584,8 +612,12 @@ export function validateDraft(db: Database, draft: OrderDraft, exceptId?: string
   if (problem) throw new OrderError(problem);
   if (draft.kind === "weekly") {
     assertLeadTime(draft.startDate, settings.earliestWeeklyDate, settings.minimumOrderLeadDays, "first meal date");
-  } else if (draft.kind === "catering") {
+  } else if (draft.kind === "catering" || draft.kind === "agelgel") {
     assertLeadTime(draft.eventDate, settings.earliestCateringDate, settings.minimumOrderLeadDays, "event date");
+  } else if (draft.kind === "to_go") {
+    assertLeadTime(draft.eventDate, settings.earliestToGoDate, TO_GO_LEAD_DAYS, "pickup date");
+  } else if (draft.kind === "dabo_defo") {
+    assertLeadTime(draft.eventDate, settings.earliestDaboDefoDate, DABO_DEFO_LEAD_DAYS, "pickup date");
   } else {
     assertLeadTime(draft.eventDate, settings.earliestCateringDate, settings.minimumOrderLeadDays, "pickup date");
   }

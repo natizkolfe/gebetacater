@@ -36,11 +36,11 @@ export const DABO_DEFO_OPTIONS: DaboDefoOption[] = [
   {
     id: "habesha-defo",
     name: "Habesha Dabo / Defo",
-    description: "Traditional Habesha bread, ordered on its own for pickup.",
+    description: "Freshly baked Habesha bread in a 9-inch pan. Order on its own for pickup.",
     price: HABESHA_DEFO_PRICE,
-    placeholder: true,
+    placeholder: false,
     available: true,
-    sizeLabel: "Standard",
+    sizeLabel: "9-inch pan",
     imageId: "habesha-defo",
   },
 ];

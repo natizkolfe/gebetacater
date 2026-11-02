@@ -1,0 +1,51 @@
+service,category,role,id,name,description,price_usd,available,notes_for_kitchen
+Weekly Meal,Fasting,meal,misir-wot,Misir Wot,Red lentils in a berbere sauce.,20,yes,
+Weekly Meal,Fasting,meal,atkilt-wot,Atakilt,"Cabbage, potato, and carrot simmered with turmeric.",20,yes,
+Weekly Meal,Fasting,meal,Denech-wot,Denech & Carrot,,,,
+Weekly Meal,Fasting,meal,kik-alicha,Kik Alicha,Yellow split peas in a mild turmeric sauce.,20,yes,
+Weekly Meal,Fasting,addon,Fosolia,Fosolia,Traditional Ethiopian chicken stew.,20,yes,
+Weekly Meal,Non-Fasting,addon,doro-wot,Doro Wot,Traditional Ethiopian chicken stew.,20,yes,
+Weekly Meal,Non-Fasting,meal,beef-Key,Beef Key Wot,,,,
+Weekly Meal,Non-Fasting,meal,beef-alicha,Beef Alicha Wot,A mild beef stew with turmeric and ginger.,20,yes,
+Weekly Meal,Non-Fasting,addon,gomen,Beef Gomen ,"Collard greens with garlic, ginger, and green chili.",20,yes,Also appears in fasting
+Weekly Meal,Non-Fasting,addon,kitfo,Kitfo,Minced beef with mitmita and niter kibbeh.,20,yes,
+Weekly Meal,Non-Fasting,addon,key-wot,Key Wot,Beef stewed in a deep berbere sauce.,20,yes,
+Weekly Meal,Non-Fasting,addon,ayib,Ayib,"Fresh farmer cheese, cool and mild.",20,yes,
+Catering,Fasting Package,included,misir-wot,Misir Wot,,21,yes,Price is per person package ($21) not per dish
+Catering,Fasting Package,included,gomen,Gomen,,21,yes,
+Catering,Fasting Package,included,atkilt-wot,Atakilt,,21,yes,
+Catering,Fasting Package,addon,kik-alicha,Kik Alicha,,20,yes,Addon price per person currently $20
+Catering,Fasting Package,addon,azifa,Azifa,,20,yes,
+Catering,Fasting Package,addon,injera,Extra Injera,,20,yes,
+Catering,Non-Fasting Package,included,doro-wot,Doro Wot,,21,yes,
+Catering,Non-Fasting Package,included,awaze-tibs,Tibs,,21,yes,
+Catering,Non-Fasting Package,included,beef-alicha,Alicha,,21,yes,
+Catering,Non-Fasting Package,included,gomen,Gomen,,21,yes,
+Catering,Non-Fasting Package,included,timatim-salad,Timatim Salad,,21,yes,
+Catering,Non-Fasting Package,addon,kitfo,Kitfo,,20,yes,
+Catering,Non-Fasting Package,addon,key-wot,Key Wot,,20,yes,
+Catering,Non-Fasting Package,addon,ayib,Ayib,,20,yes,
+To-Go,Fasting,item,togo-placeholder-fasting-1,Placeholder Fasting Item,Replace with real fasting To-Go dish.,,yes,PLACEHOLDER - edit name/price
+To-Go,Non-Fasting,item,togo-placeholder-non-fasting-1,Placeholder Non-Fasting Item,Replace with real non-fasting To-Go dish.,,yes,PLACEHOLDER - edit name/price
+To-Go,Dabo / Bread,item,togo-placeholder-bread-1,Placeholder Dabo / Bread,Replace with approved bread item.,,yes,PLACEHOLDER - edit name/price
+To-Go,Extras,item,togo-placeholder-extra-1,Placeholder Extra,Replace with approved To-Go extra.,,yes,PLACEHOLDER - edit name/price
+Dabo / Defo,Bread,item,habesha-defo,Habesha Dabo / Defo,Traditional Habesha bread ordered on its own for pickup.,15,yes,
+Agelgel,Fasting,item,agelgel-placeholder-fasting-1,Placeholder Fasting Dish,Replace with approved fasting Agelgel dish.,,yes,PLACEHOLDER
+Agelgel,Fasting,item,agelgel-placeholder-fasting-2,Placeholder Fasting Dish,Replace with approved fasting Agelgel dish.,,yes,PLACEHOLDER
+Agelgel,Fasting,item,agelgel-placeholder-fasting-3,Placeholder Fasting Dish,Replace with approved fasting Agelgel dish.,,yes,PLACEHOLDER
+Agelgel,Non-Fasting,item,agelgel-placeholder-non-fasting-1,Placeholder Non-Fasting Dish,Replace with approved non-fasting Agelgel dish.,,yes,PLACEHOLDER
+Agelgel,Non-Fasting,item,agelgel-placeholder-non-fasting-2,Placeholder Non-Fasting Dish,Replace with approved non-fasting Agelgel dish.,,yes,PLACEHOLDER
+Agelgel,Non-Fasting,item,agelgel-placeholder-non-fasting-3,Placeholder Non-Fasting Dish,Replace with approved non-fasting Agelgel dish.,,yes,PLACEHOLDER
+Agelgel,Extras,item,agelgel-placeholder-extra-1,Placeholder Extra,Replace with approved Agelgel extra.,,yes,PLACEHOLDER
+Agelgel,Injera,item,agelgel-injera,Injera,Number of Injera for Agelgel.,,yes,Priced separately later
+,,,,,,,,
+,,,,,,,,
+,,,,,,,,
+,,,,,,,,
+,,,,,,,,
+,,,,,,,,
+,,,,,,,,
+,,,,,,,,
+,,,,,,,,
+,,,,,,,,
+,,,,,,,,

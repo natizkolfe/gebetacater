@@ -8,8 +8,8 @@ export const WEEKLY_MEAL_PRICE = 20;
 /** Temporary price for a weekly add-on. Change this when final prices are set. */
 export const WEEKLY_ADDON_PRICE = 20;
 
-/** Habesha Defo does not use the regular meal price. */
-export const HABESHA_DEFO_PRICE = 15;
+/** Habesha Defo / Dabo — 9-inch pan. Does not use the regular meal price. */
+export const HABESHA_DEFO_PRICE = 10;
 
 export const CONTAINER_PORTION_ID = "container";
 
@@ -59,7 +59,7 @@ const MEALS: FoodOffer[] = [
   meal("awaze-tibs", "Tibs", "Sautéed beef with peppers and awaze.", "non_fasting"),
   meal("beef-alicha", "Beef Alicha", "A mild beef stew with turmeric and ginger.", "non_fasting"),
   meal("timatim-salad", "Timatim Salad", "Tomato salad with onion, jalapeño, and lemon.", "non_fasting"),
-  meal("habesha-defo", "Habesha Defo", "Traditional Habesha bread.", "fasting", HABESHA_DEFO_PRICE),
+  meal("habesha-defo", "Habesha Defo", "Traditional Habesha bread baked in a 9-inch pan.", "fasting", HABESHA_DEFO_PRICE),
 ];
 
 const ADDONS: FoodOffer[] = [

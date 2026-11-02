@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/client-api";
 import { money } from "@/lib/format";
-import { defaultDraft, leadTimeNotice } from "@/lib/orders";
+import { defaultDraft, leadTimeNotice, TO_GO_LEAD_DAYS } from "@/lib/orders";
 import {
   TO_GO_CATEGORY_LABEL,
   toGoCategories,
@@ -35,7 +35,7 @@ export function ToGoOrder() {
     api<{ settings: PublicSettings }>("/api/settings")
       .then((data) => {
         setSettings(data.settings);
-        setPickupDate(data.settings.earliestCateringDate);
+        setPickupDate(data.settings.earliestToGoDate);
       })
       .catch((reason: Error) => setError(reason.message));
   }, []);
@@ -43,7 +43,7 @@ export function ToGoOrder() {
   useEffect(() => {
     if (!hydrated || !settings) return;
     if (draft?.kind === "to_go") {
-      setPickupDate(draft.eventDate || settings.earliestCateringDate);
+      setPickupDate(draft.eventDate || settings.earliestToGoDate);
       setPickupTime(draft.eventTime || "12:00");
       const next: Record<string, number> = {};
       for (const line of draft.lines) next[line.itemId] = line.quantity;
@@ -104,7 +104,7 @@ export function ToGoOrder() {
       <div className="mt-6 rounded-xl border border-border bg-card p-5">
         <p className="text-sm font-medium">Pickup</p>
         <p className="mt-1 text-sm text-muted-foreground">{settings.pickupAddress}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{leadTimeNotice(settings.minimumOrderLeadDays)}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{leadTimeNotice(TO_GO_LEAD_DAYS)}</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="togo-date">Pickup date</Label>
@@ -112,7 +112,7 @@ export function ToGoOrder() {
               id="togo-date"
               type="date"
               className="h-11 bg-background px-3"
-              min={settings.earliestCateringDate}
+              min={settings.earliestToGoDate}
               value={pickupDate}
               onChange={(event) => setPickupDate(event.target.value)}
             />
