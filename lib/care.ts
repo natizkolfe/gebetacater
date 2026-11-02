@@ -38,8 +38,11 @@ export function newCareToken(): string {
 }
 
 export function containerSize(order: { kind: OrderKind; durationDays: number | null }): string {
-  if (order.kind !== "weekly") return "Catering";
-  return order.durationDays === 14 ? "28 oz" : "24 oz";
+  if (order.kind === "weekly") return order.durationDays === 14 ? "28 oz" : "24 oz";
+  if (order.kind === "agelgel") return "Agelgel";
+  if (order.kind === "to_go") return "To-Go";
+  if (order.kind === "dabo_defo") return "Dabo / Defo";
+  return "Catering";
 }
 
 function sectionText(value: string): string {

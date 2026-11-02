@@ -86,7 +86,8 @@ export function PackageBuilder() {
   const selectedIncluded = pick && draft && samePick ? pick.includedIds : [];
 
   useEffect(() => {
-    if (!draft || (pick?.preference === draft.fastingPreference && pick?.kind === draft.kind)) return;
+    if (!draft || (draft.kind !== "weekly" && draft.kind !== "catering")) return;
+    if (pick?.preference === draft.fastingPreference && pick?.kind === draft.kind) return;
     const current = packageFor(draft.fastingPreference);
     const allowedAddons = new Set(current.addons.map((dish) => dish.id));
     const allowedIncluded = new Set(current.included.map((dish) => dish.id));
@@ -254,6 +255,7 @@ export function PackageBuilder() {
     const item = menu?.find((entry) => entry.id === itemId);
     const line = draft?.lines.find((entry) => entry.itemId === itemId);
     if (!item || !line || !draft) return;
+    if (draft.kind !== "weekly" && draft.kind !== "catering") return;
     setEditing({
       item,
       lineId: line.lineId,

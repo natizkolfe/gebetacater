@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PlatterArt } from "@/components/mark";
+import { MoreWaysBoard } from "@/components/more-ways-board";
 import { PackageBoard } from "@/components/package-board";
 import { WeeklyContainer } from "@/components/weekly-container";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,14 @@ export default function HomePage() {
           Pick fasting, non-fasting, or a mix, then continue to weekly meals or catering. The meals, containers, and add-ons are chosen on the order page.
         </p>
         <PackageBoard />
+      </section>
+
+      <section id="more-ways" className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6">
+        <h2 className="font-display text-4xl">More ways to order</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+          Looking for something different? Order from our To-Go menu or order freshly prepared Dabo/Defo separately.
+        </p>
+        <MoreWaysBoard />
       </section>
 
       <section className="mx-auto w-full max-w-6xl px-4 sm:px-6">

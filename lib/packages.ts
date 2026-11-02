@@ -161,6 +161,9 @@ export const DISH_IMAGES: Record<string, string> = {
   "quanta-firfir": "/dishes/quanta-firfir.jpg",
   "enkulal-firfir": "/dishes/enkulal-firfir.jpg",
   injera: "/dishes/injera.jpg",
+  agelgel: "/dishes/agelgel.png",
+  "habesha-defo": "/dishes/habesha-defo.jpg",
+  "agelgel-injera": "/dishes/injera.jpg",
 };
 
 export function dishImage(id: string): string | null {

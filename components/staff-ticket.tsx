@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/client-api";
 import { formatDateLong, formatTime, formatWhen } from "@/lib/dates";
-import { displayStatus, FASTING_LABEL, FULFILLMENT_LABEL, money, statusTone } from "@/lib/format";
+import { displayStatus, FASTING_LABEL, FULFILLMENT_LABEL, KIND_LABEL, money, statusTone } from "@/lib/format";
 import { moneyParts, scheduledDate, serviceName } from "@/lib/notices";
 import { allowedTransitions, orderAllergies, specialInstructions } from "@/lib/orders";
 import type { OrderRecord, OrderStatus, PublicSettings } from "@/lib/types";
@@ -176,8 +176,34 @@ export function StaffTicket({ orderId }: { orderId: string }) {
             <Fact label="Scheduled" value={scheduleValue(order)} />
             <Fact label="Service" value={serviceName(order)} />
             <Fact label="Meal type" value={FASTING_LABEL[order.fastingPreference]} />
-            <Fact label="Length" value={order.kind === "catering" ? "Catering" : order.durationDays === 14 ? "2 weeks" : "1 week"} />
-            {order.guestCount ? <Fact label="Guests" value={String(order.guestCount)} /> : null}
+            <Fact
+              label="Length"
+              value={
+                order.kind === "catering"
+                  ? "Catering"
+                  : order.kind === "to_go"
+                    ? "To-Go"
+                    : order.kind === "dabo_defo"
+                      ? "Dabo / Defo"
+                      : order.kind === "agelgel"
+                        ? "Agelgel"
+                        : order.durationDays === 14
+                          ? "2 weeks"
+                          : "1 week"
+              }
+            />
+            {order.guestCount ? (
+              <Fact
+                label={order.kind === "agelgel" ? "People" : "Guests"}
+                value={String(order.guestCount)}
+              />
+            ) : null}
+            {order.kind === "agelgel" ? (
+              <Fact
+                label="Injera"
+                value={String(order.lines.find((line) => line.itemId === "agelgel-injera")?.quantity ?? "—")}
+              />
+            ) : null}
           </Section>
           <Section title="Food preparation">
             <p className="text-xs tracking-[0.14em] text-primary uppercase">Standard meals</p>
@@ -212,7 +238,11 @@ export function StaffTicket({ orderId }: { orderId: string }) {
                 ? order.durationDays === 14
                   ? "28 oz Square"
                   : "24 oz Round"
-                : "Catering service"}
+                : order.kind === "agelgel"
+                  ? "Agelgel service"
+                  : order.kind === "to_go" || order.kind === "dabo_defo"
+                    ? KIND_LABEL[order.kind]
+                    : "Catering service"}
             </p>
             {instructions.length > 0 ? (
               <div className="mt-4">
@@ -335,7 +365,7 @@ export function StaffTicket({ orderId }: { orderId: string }) {
 
 function scheduleValue(order: OrderRecord): string {
   const date = formatDateLong(scheduledDate(order));
-  if (order.kind === "catering" && order.eventTime) return `${date} at ${formatTime(order.eventTime)}`;
+  if (order.kind !== "weekly" && order.eventTime) return `${date} at ${formatTime(order.eventTime)}`;
   return date;
 }
 

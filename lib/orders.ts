@@ -12,7 +12,16 @@ import {
 import { addonUnitPrice, buildPackageLines, cateringUnitPrice, serviceQuote, weeklyLineUnit } from "@/lib/packages";
 import { captureCare, newCareToken } from "@/lib/care";
 import { claimPromo, dropPromo, findPromo, promoDiscountAmount, promoProblem } from "@/lib/promo";
+import {
+  AGELGEL_INJERA_ID,
+  AGELGEL_MAX_INJERA,
+  AGELGEL_MAX_PEOPLE,
+  AGELGEL_MIN_PEOPLE,
+  resolveAgelgelUnit,
+} from "@/lib/agelgel";
+import { daboDefoOption } from "@/lib/dabo-defo";
 import { containerForDays, foodOffer, weeklyUnitPrice } from "@/lib/portions";
+import { toGoItem } from "@/lib/to-go";
 import { FASTING_LABEL, FULFILLMENT_LABEL, KIND_LABEL, SPICE_LABEL } from "@/lib/format";
 import type {
   Customization,
@@ -262,10 +271,14 @@ export function fulfillmentDate(order: Pick<OrderRecord, "kind" | "startDate" | 
 }
 
 export function orderEndDate(order: Pick<OrderRecord, "kind" | "startDate" | "durationDays" | "eventDate"> | OrderDraft): string {
-  if (order.kind === "catering") return order.eventDate ?? "";
+  if (order.kind !== "weekly") return order.eventDate ?? "";
   const start = order.startDate ?? "";
   const days = order.durationDays ?? 7;
   return addDays(start, days - 1);
+}
+
+export function isSimplePickupKind(kind: OrderDraft["kind"] | OrderRecord["kind"]): boolean {
+  return kind === "to_go" || kind === "dabo_defo";
 }
 
 function assertLeadTime(date: string, earliest: string, leadDays: number, label: string) {
@@ -311,6 +324,7 @@ function daysBetween(start: string, date: string): number {
 
 export function assertCapacity(db: Database, draft: OrderDraft, exceptId?: string) {
   const settings = publicSettings(db.settings);
+  if (isSimplePickupKind(draft.kind) || draft.kind === "agelgel") return;
   if (draft.kind === "catering") {
     const used = cateringGuestsOnDate(db, draft.eventDate, exceptId);
     if (used + draft.guestCount > settings.maxGuestsPerDay) {
@@ -343,12 +357,111 @@ function weekdayCount(draft: OrderDraft): number {
   return draft.durationDays;
 }
 
+function buildSimplePickupLines(draft: OrderDraft): OrderLine[] {
+  return draft.lines.map((line) => {
+    if (!Number.isInteger(line.quantity) || line.quantity < 1) {
+      throw new OrderError("Choose a quantity for each item.");
+    }
+    if (line.quantity > 50) {
+      throw new OrderError("Each item can be ordered up to 50 at a time.");
+    }
+    if (draft.kind === "to_go") {
+      const item = toGoItem(line.itemId);
+      if (!item || !item.available) {
+        throw new OrderError("One of the To-Go dishes is no longer available. Remove it and choose again.");
+      }
+      return {
+        lineId: line.lineId,
+        itemId: item.id,
+        name: item.name,
+        amharic: "",
+        quantity: line.quantity,
+        unitPrice: item.price,
+        total: roundMoney(item.price * line.quantity),
+        dayIndex: null,
+        mealSlot: null,
+        customization: blankCustomization(),
+        summary: item.placeholder ? ["Placeholder menu item"] : [],
+        source: "included" as const,
+        portionId: null,
+      };
+    }
+    const item = daboDefoOption(line.itemId);
+    if (!item || !item.available) {
+      throw new OrderError("That Dabo / Defo option is no longer available.");
+    }
+    return {
+      lineId: line.lineId,
+      itemId: item.id,
+      name: item.name,
+      amharic: "",
+      quantity: line.quantity,
+      unitPrice: item.price,
+      total: roundMoney(item.price * line.quantity),
+      dayIndex: null,
+      mealSlot: null,
+      customization: blankCustomization(),
+      summary: item.sizeLabel ? [item.sizeLabel] : [],
+      source: "included" as const,
+      portionId: null,
+    };
+  });
+}
+
+function buildAgelgelLines(draft: OrderDraft): OrderLine[] {
+  const injera = draft.lines.find((line) => line.itemId === AGELGEL_INJERA_ID);
+  if (!injera || !Number.isInteger(injera.quantity) || injera.quantity < 1) {
+    throw new OrderError("Choose how many Injera you would like.");
+  }
+  if (injera.quantity > AGELGEL_MAX_INJERA) {
+    throw new OrderError(`Injera can be ordered up to ${AGELGEL_MAX_INJERA} at a time.`);
+  }
+  const foods = draft.lines.filter((line) => line.itemId !== AGELGEL_INJERA_ID && line.source !== "addon");
+  if (foods.length === 0) {
+    throw new OrderError("Choose at least one Agelgel food selection.");
+  }
+  return draft.lines.map((line) => {
+    if (!Number.isInteger(line.quantity) || line.quantity < 1) {
+      throw new OrderError("Choose a quantity for each Agelgel item.");
+    }
+    if (line.quantity > AGELGEL_MAX_INJERA) {
+      throw new OrderError("Each Agelgel item can be ordered up to 100 at a time.");
+    }
+    const item = resolveAgelgelUnit(line.itemId);
+    if (!item) {
+      throw new OrderError("One of the Agelgel selections is no longer available. Remove it and choose again.");
+    }
+    const source = line.source === "addon" || item.category === "extras" ? ("addon" as const) : ("included" as const);
+    return {
+      lineId: line.lineId,
+      itemId: line.itemId,
+      name: item.name,
+      amharic: "",
+      quantity: line.quantity,
+      unitPrice: item.price,
+      total: roundMoney(item.price * line.quantity),
+      dayIndex: null,
+      mealSlot: null,
+      customization: blankCustomization(),
+      summary: item.placeholder ? ["Placeholder menu item"] : item.category === "injera" ? ["Injera"] : [],
+      source,
+      portionId: null,
+    };
+  });
+}
+
 export function buildLines(menu: MenuItem[], draft: OrderDraft): OrderLine[] {
   if (draft.lines.length === 0) {
     throw new OrderError("Add at least one dish before checkout.");
   }
   if (draft.lines.length > 80) {
     throw new OrderError("An order can hold up to 80 customized dishes.");
+  }
+  if (isSimplePickupKind(draft.kind)) {
+    return buildSimplePickupLines(draft);
+  }
+  if (draft.kind === "agelgel") {
+    return buildAgelgelLines(draft);
   }
   if (draft.kind === "weekly" && !draft.lines.some((entry) => entry.source === "included")) {
     throw new OrderError("Choose at least one meal.");
@@ -438,7 +551,31 @@ export function scheduleProblems(draft: OrderDraft, settings: PublicSettings): s
     if (!/^\d{2}:\d{2}$/.test(draft.eventTime)) return "Choose a pickup or delivery time.";
     return null;
   }
-  return "Choose weekly meals or catering.";
+  if (isSimplePickupKind(draft.kind)) {
+    if (draft.fulfillment !== "pickup") return "To-Go and Dabo / Defo orders are pickup only.";
+    if (!isIsoDate(draft.eventDate)) return "Choose a valid pickup date.";
+    if (draft.eventDate < settings.earliestCateringDate) {
+      return leadTimeError(settings.minimumOrderLeadDays);
+    }
+    if (!/^\d{2}:\d{2}$/.test(draft.eventTime)) return "Choose a pickup time.";
+    return null;
+  }
+  if (draft.kind === "agelgel") {
+    if (!Number.isInteger(draft.guestCount)) return "Enter how many people you are serving.";
+    if (draft.guestCount < AGELGEL_MIN_PEOPLE) {
+      return `Agelgel needs at least ${AGELGEL_MIN_PEOPLE} person.`;
+    }
+    if (draft.guestCount > AGELGEL_MAX_PEOPLE) {
+      return `One Agelgel order can cover up to ${AGELGEL_MAX_PEOPLE} people.`;
+    }
+    if (!isIsoDate(draft.eventDate)) return "Choose a valid order date.";
+    if (draft.eventDate < settings.earliestCateringDate) {
+      return leadTimeError(settings.minimumOrderLeadDays);
+    }
+    if (!/^\d{2}:\d{2}$/.test(draft.eventTime)) return "Choose a pickup or delivery time.";
+    return null;
+  }
+  return "Choose a Gebeta service to continue.";
 }
 
 export function validateDraft(db: Database, draft: OrderDraft, exceptId?: string): OrderLine[] {
@@ -447,8 +584,10 @@ export function validateDraft(db: Database, draft: OrderDraft, exceptId?: string
   if (problem) throw new OrderError(problem);
   if (draft.kind === "weekly") {
     assertLeadTime(draft.startDate, settings.earliestWeeklyDate, settings.minimumOrderLeadDays, "first meal date");
-  } else {
+  } else if (draft.kind === "catering") {
     assertLeadTime(draft.eventDate, settings.earliestCateringDate, settings.minimumOrderLeadDays, "event date");
+  } else {
+    assertLeadTime(draft.eventDate, settings.earliestCateringDate, settings.minimumOrderLeadDays, "pickup date");
   }
 
   const lines = buildLines(db.menu, draft);
@@ -480,13 +619,13 @@ export function createOrder(db: Database, user: UserRecord, draft: OrderDraft): 
     userId: user.id,
     status: "payment_pending",
     kind: draft.kind,
-    fulfillment: draft.fulfillment,
+    fulfillment: isSimplePickupKind(draft.kind) ? "pickup" : draft.fulfillment,
     fastingPreference: draft.fastingPreference,
     durationDays: draft.kind === "weekly" ? draft.durationDays : null,
     startDate: draft.kind === "weekly" ? draft.startDate : null,
-    guestCount: draft.kind === "catering" ? draft.guestCount : null,
-    eventDate: draft.kind === "catering" ? draft.eventDate : null,
-    eventTime: draft.kind === "catering" ? draft.eventTime : null,
+    guestCount: draft.kind === "catering" || draft.kind === "agelgel" ? draft.guestCount : null,
+    eventDate: draft.kind === "weekly" ? null : draft.eventDate,
+    eventTime: draft.kind === "weekly" ? null : draft.eventTime,
     address: draft.fulfillment === "delivery" ? (draft.delivery?.address ?? draft.address).trim() : "",
     deliveryMiles: draft.fulfillment === "delivery" ? (draft.delivery?.miles ?? null) : null,
     deliveryFee: draft.fulfillment === "delivery" ? deliveryFee : null,
@@ -799,6 +938,12 @@ export function orderHeadline(order: OrderRecord): string {
   if (order.kind === "catering") {
     return `${KIND_LABEL.catering} for ${order.guestCount} guests`;
   }
+  if (order.kind === "to_go" || order.kind === "dabo_defo") {
+    return KIND_LABEL[order.kind];
+  }
+  if (order.kind === "agelgel") {
+    return `${KIND_LABEL.agelgel} for ${order.guestCount} people`;
+  }
   return `${order.durationDays}-day meal plan`;
 }
 
@@ -814,20 +959,34 @@ export function instructionsFor(order: OrderRecord, settings: Settings): string 
 export function customerTotal(menu: MenuItem[], draft: OrderDraft): { food: number; delivery: number; total: number } {
   const addonIds = draft.lines.filter((line) => line.source === "addon").map((line) => line.itemId);
   const quote = serviceQuote(draft, addonIds);
-  const food = quote
-    ? quote.total
-    : draft.lines.reduce((sum, line) => {
-        const item = menu.find((entry) => entry.id === line.itemId);
-        if (!item) return sum;
-        if (draft.kind === "weekly") {
-          return sum + weeklyUnitPrice(line.itemId, line.source) * line.quantity;
-        }
-        const unit =
-          line.source === "addon"
-            ? addonUnitPrice(draft.fastingPreference, line.itemId)
-            : weeklyLineUnit(draft.fastingPreference, line, draft.lines, unitPrice(item, line.customization));
-        return sum + unit * line.quantity;
-      }, 0);
+  let food: number;
+  if (quote) {
+    food = quote.total;
+  } else if (draft.kind === "agelgel") {
+    food = draft.lines.reduce((sum, line) => {
+      const unit = resolveAgelgelUnit(line.itemId)?.price ?? 0;
+      return sum + unit * line.quantity;
+    }, 0);
+  } else if (isSimplePickupKind(draft.kind)) {
+    food = draft.lines.reduce((sum, line) => {
+      const unit =
+        draft.kind === "to_go" ? (toGoItem(line.itemId)?.price ?? 0) : (daboDefoOption(line.itemId)?.price ?? 0);
+      return sum + unit * line.quantity;
+    }, 0);
+  } else {
+    food = draft.lines.reduce((sum, line) => {
+      const item = menu.find((entry) => entry.id === line.itemId);
+      if (!item) return sum;
+      if (draft.kind === "weekly") {
+        return sum + weeklyUnitPrice(line.itemId, line.source) * line.quantity;
+      }
+      const unit =
+        line.source === "addon"
+          ? addonUnitPrice(draft.fastingPreference, line.itemId)
+          : weeklyLineUnit(draft.fastingPreference, line, draft.lines, unitPrice(item, line.customization));
+      return sum + unit * line.quantity;
+    }, 0);
+  }
   const delivery = draft.fulfillment === "delivery" ? roundMoney(draft.delivery?.fee ?? 0) : 0;
   const foodRounded = roundMoney(food);
   return { food: foodRounded, delivery, total: roundMoney(foodRounded + delivery) };

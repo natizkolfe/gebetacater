@@ -179,7 +179,7 @@ export function StaffBoard() {
 }
 
 function scheduledDay(order: OrderRecord): string {
-  return order.kind === "catering" ? (order.eventDate ?? "") : (order.startDate ?? "");
+  return order.kind === "weekly" ? (order.startDate ?? "") : (order.eventDate ?? "");
 }
 
 function matchesFilter(order: OrderRecord, filter: BoardFilter, today: string): boolean {
@@ -264,9 +264,19 @@ function OrderCard({
       <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
         <Fact label="Customer" value={order.customerName} />
         <Fact label="Service" value={serviceName(order)} />
-        <Fact label="Meal type" value={FASTING_LABEL[order.fastingPreference]} />
+        {order.kind === "weekly" || order.kind === "catering" || order.kind === "agelgel" ? (
+          <Fact label="Meal type" value={FASTING_LABEL[order.fastingPreference]} />
+        ) : null}
         <Fact label="Fulfillment" value={FULFILLMENT_LABEL[order.fulfillment]} />
-        {order.guestCount ? <Fact label="Guests" value={String(order.guestCount)} /> : null}
+        {order.guestCount ? (
+          <Fact label={order.kind === "agelgel" ? "People" : "Guests"} value={String(order.guestCount)} />
+        ) : null}
+        {order.kind === "agelgel" ? (
+          <Fact
+            label="Injera"
+            value={String(order.lines.find((line) => line.itemId === "agelgel-injera")?.quantity ?? "—")}
+          />
+        ) : null}
         {order.durationDays ? <Fact label="Package" value={order.durationDays === 14 ? "2 weeks" : "1 week"} /> : null}
       </dl>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">

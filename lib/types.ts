@@ -1,4 +1,4 @@
-export type OrderKind = "weekly" | "catering";
+export type OrderKind = "weekly" | "catering" | "to_go" | "dabo_defo" | "agelgel";
 export type Fulfillment = "pickup" | "delivery";
 export type FastingPreference = "fasting" | "non_fasting" | "mixed";
 export type MealSlot = "lunch" | "dinner";

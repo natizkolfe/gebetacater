@@ -71,9 +71,15 @@ export function monthlyOrdersCsv(orders: OrderRecord[], year: number, month: num
         ? order.guestCount != null
           ? `${order.guestCount} guests`
           : ""
-        : order.durationDays != null
+        : order.kind === "weekly" && order.durationDays != null
           ? `${order.durationDays} days`
-          : "";
+          : order.kind === "agelgel"
+            ? order.guestCount != null
+              ? `${order.guestCount} people`
+              : ""
+            : order.kind === "to_go" || order.kind === "dabo_defo"
+              ? `${order.lines.reduce((sum, line) => sum + line.quantity, 0)} items`
+              : "";
     return [
       order.number,
       stampInZone(order.createdAt, timeZone),

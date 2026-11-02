@@ -8,16 +8,31 @@ import { useAuth, useDraft } from "@/components/providers";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/client-api";
 import { addDays, formatDate, formatTime } from "@/lib/dates";
-import { FASTING_LABEL, FULFILLMENT_LABEL, money } from "@/lib/format";
+import { FASTING_LABEL, FULFILLMENT_LABEL, KIND_LABEL, money } from "@/lib/format";
 import { DishPhoto } from "@/components/dish-photo";
 import { FulfillmentChoice } from "@/components/fulfillment-choice";
 import { PromoCodeField } from "@/components/promo-code-field";
 import { WeeklyContainer } from "@/components/weekly-container";
+import {
+  AGELGEL_INJERA_ID,
+  agelgelLinesSubtotal,
+  agelgelPriceLabel,
+  resolveAgelgelUnit,
+} from "@/lib/agelgel";
+import { daboDefoOption } from "@/lib/dabo-defo";
 import { addonUnitPrice, dishLabel, dishSide, serviceQuote, sideLabel, weeklyContainer } from "@/lib/packages";
 import { containerForDays, foodOffer, weeklyUnitPrice } from "@/lib/portions";
-import { describeCustomization, lineCountLabel, scheduleProblems, unitPrice } from "@/lib/orders";
+import { describeCustomization, isSimplePickupKind, lineCountLabel, scheduleProblems, unitPrice } from "@/lib/orders";
 import { priceWithPromo } from "@/lib/promo";
+import { toGoItem } from "@/lib/to-go";
 import type { DraftLine, MenuItem, OrderDraft, PublicSettings } from "@/lib/types";
+
+function editHref(kind: OrderDraft["kind"]): string {
+  if (kind === "to_go") return "/order/to-go";
+  if (kind === "dabo_defo") return "/order/dabo-defo";
+  if (kind === "agelgel") return "/order/agelgel";
+  return "/order/menu";
+}
 
 export function OrderReview() {
   const router = useRouter();
@@ -45,11 +60,15 @@ export function OrderReview() {
   }
 
   if (!draft || draft.lines.length === 0) {
+    const startHref = draft ? editHref(draft.kind) : "/order";
     return (
       <Shell>
-        <PageIntro title="Nothing to review yet" lede="Choose at least one meal for a weekly order, or a catering package." />
-        <Button className="mt-6 h-11 px-4" render={<Link href={draft ? "/order/menu" : "/order"} />}>
-          {draft ? "Back to the package" : "Start an order"}
+        <PageIntro
+          title="Nothing to review yet"
+          lede="Choose items for To-Go, Dabo / Defo, Agelgel, a weekly order, or catering."
+        />
+        <Button className="mt-6 h-11 px-4" render={<Link href={startHref} />}>
+          {draft ? "Back to the order" : "Start an order"}
         </Button>
       </Shell>
     );
@@ -77,28 +96,43 @@ export function OrderReview() {
       ? "Choose at least one meal."
       : draft.kind === "catering" && draft.lines.length === 0
         ? "Choose at least one catering food."
-        : null);
+        : draft.kind === "agelgel" && !draft.lines.some((line) => line.itemId !== AGELGEL_INJERA_ID && line.source !== "addon")
+          ? "Choose at least one Agelgel food selection."
+          : isSimplePickupKind(draft.kind) && draft.lines.length === 0
+            ? "Add at least one item."
+            : null);
   const rows = draft.lines.map((line) => {
     const item = menu.find((entry) => entry.id === line.itemId);
     return { line, item };
   });
-  const quote = serviceQuote(
-    draft,
-    draft.lines.filter((line) => line.source === "addon").map((line) => line.itemId),
-  );
+  const quote =
+    isSimplePickupKind(draft.kind) || draft.kind === "agelgel"
+      ? null
+      : serviceQuote(
+          draft,
+          draft.lines.filter((line) => line.source === "addon").map((line) => line.itemId),
+        );
   const subtotal = quote
     ? quote.total
-    : rows.reduce((sum, row) => {
-        if (!row.item) return sum;
-        if (draft.kind === "weekly") {
-          return sum + weeklyUnitPrice(row.line.itemId, row.line.source) * row.line.quantity;
-        }
-        const perDay =
-          row.line.source === "addon"
-            ? addonUnitPrice(draft.fastingPreference, row.line.itemId)
-            : unitPrice(row.item, row.line.customization);
-        return sum + perDay * row.line.quantity;
-      }, 0);
+    : isSimplePickupKind(draft.kind)
+      ? draft.lines.reduce((sum, line) => {
+          const unit =
+            draft.kind === "to_go" ? (toGoItem(line.itemId)?.price ?? 0) : (daboDefoOption(line.itemId)?.price ?? 0);
+          return sum + unit * line.quantity;
+        }, 0)
+      : draft.kind === "agelgel"
+        ? agelgelLinesSubtotal(draft.lines)
+        : rows.reduce((sum, row) => {
+            if (!row.item) return sum;
+            if (draft.kind === "weekly") {
+              return sum + weeklyUnitPrice(row.line.itemId, row.line.source) * row.line.quantity;
+            }
+            const perDay =
+              row.line.source === "addon"
+                ? addonUnitPrice(draft.fastingPreference, row.line.itemId)
+                : unitPrice(row.item, row.line.customization);
+            return sum + perDay * row.line.quantity;
+          }, 0);
   const deliveryFee = draft.fulfillment === "delivery" ? (draft.delivery?.fee ?? 0) : 0;
   const priced = priceWithPromo(subtotal, deliveryFee, draft.promoCode ? draft.promoPercent : null);
 
@@ -120,11 +154,15 @@ export function OrderReview() {
             <h2 className="font-display text-2xl">Schedule</h2>
             <dl className="mt-3 grid gap-2 text-sm">
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Order</dt>
+                <dt className="text-muted-foreground">Service</dt>
                 <dd>
                   {draft.kind === "weekly"
                     ? weeklyContainer(draft.durationDays).title
-                    : `Catering for ${draft.guestCount}`}
+                    : draft.kind === "catering"
+                      ? `Catering for ${draft.guestCount}`
+                      : draft.kind === "agelgel"
+                        ? `Agelgel for ${draft.guestCount} people`
+                        : KIND_LABEL[draft.kind]}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
@@ -135,10 +173,12 @@ export function OrderReview() {
                     : `${formatDate(draft.eventDate)} · ${formatTime(draft.eventTime)}`}
                 </dd>
               </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Table</dt>
-                <dd>{FASTING_LABEL[draft.fastingPreference]}</dd>
-              </div>
+              {!isSimplePickupKind(draft.kind) ? (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Table</dt>
+                  <dd>{FASTING_LABEL[draft.fastingPreference]}</dd>
+                </div>
+              ) : null}
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">{FULFILLMENT_LABEL[draft.fulfillment]}</dt>
                 <dd className="max-w-xs text-right">
@@ -156,6 +196,87 @@ export function OrderReview() {
               rows={rows}
               onRemove={(lineId) => setDraft({ ...draft, lines: draft.lines.filter((entry) => entry.lineId !== lineId) })}
             />
+          ) : null}
+          {isSimplePickupKind(draft.kind) ? (
+            <section className="rounded-xl border border-border bg-card p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-display text-2xl">{KIND_LABEL[draft.kind]} summary</h2>
+                <span className="text-sm text-muted-foreground">{lineCountLabel(draft.lines)}</span>
+              </div>
+              <ul className="mt-4 grid gap-3">
+                {draft.lines.map((line) => {
+                  const label =
+                    draft.kind === "to_go" ? toGoItem(line.itemId)?.name : daboDefoOption(line.itemId)?.name;
+                  const unit =
+                    draft.kind === "to_go" ? (toGoItem(line.itemId)?.price ?? 0) : (daboDefoOption(line.itemId)?.price ?? 0);
+                  return (
+                    <li key={line.lineId} className="border-t border-border pt-3 first:border-0 first:pt-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium">{label ?? line.itemId}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {line.quantity} × {unit > 0 ? money(unit) : "Price TBD"}
+                          </p>
+                        </div>
+                        <p className="text-sm tabular-nums">{unit > 0 ? money(unit * line.quantity) : "—"}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="mt-2 text-xs text-muted-foreground"
+                        onClick={() => setDraft({ ...draft, lines: draft.lines.filter((entry) => entry.lineId !== line.lineId) })}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+          {draft.kind === "agelgel" ? (
+            <section className="rounded-xl border border-border bg-card p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-display text-2xl">Your Agelgel</h2>
+                <span className="text-sm text-muted-foreground">{lineCountLabel(draft.lines)}</span>
+              </div>
+              <dl className="mt-3 grid gap-2 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Serving</dt>
+                  <dd>
+                    {draft.guestCount} {draft.guestCount === 1 ? "Person" : "People"}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Style</dt>
+                  <dd>{FASTING_LABEL[draft.fastingPreference]}</dd>
+                </div>
+              </dl>
+              <ul className="mt-4 grid gap-3">
+                {draft.lines.map((line) => {
+                  const resolved = resolveAgelgelUnit(line.itemId);
+                  return (
+                    <li key={line.lineId} className="border-t border-border pt-3 first:border-0 first:pt-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium">{resolved?.name ?? line.itemId}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {line.quantity} × {agelgelPriceLabel(resolved?.price ?? 0)}
+                          </p>
+                        </div>
+                        <p className="text-sm tabular-nums">{agelgelPriceLabel((resolved?.price ?? 0) * line.quantity)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="mt-2 text-xs text-muted-foreground"
+                        onClick={() => setDraft({ ...draft, lines: draft.lines.filter((entry) => entry.lineId !== line.lineId) })}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           ) : null}
           {draft.kind === "catering" ? (
           <section className="rounded-xl border border-border bg-card p-5">
@@ -262,13 +383,25 @@ export function OrderReview() {
               </p>
             </section>
           ) : null}
-          <FulfillmentChoice />
+          {isSimplePickupKind(draft.kind) ? (
+            <section className="rounded-xl border border-border bg-card p-5">
+              <h2 className="font-display text-2xl">Pickup</h2>
+              <p className="mt-2 text-sm text-muted-foreground">{settings.pickupAddress}</p>
+              <p className="mt-2 text-sm">
+                {formatDate(draft.eventDate)} · {formatTime(draft.eventTime)}
+              </p>
+            </section>
+          ) : (
+            <FulfillmentChoice />
+          )}
         </div>
         <aside className="h-fit rounded-xl border border-border bg-card p-5 lg:sticky lg:top-24">
           <p className="text-sm text-muted-foreground">
             {quote ? "Estimated total" : "Total due before confirmation"}
           </p>
-          <p className="mt-1 font-display text-4xl">{money(priced.total)}</p>
+          <p className="mt-1 font-display text-4xl">
+            {draft.kind === "agelgel" && priced.total === 0 ? "$XX.XX" : money(priced.total)}
+          </p>
           {priced.discount > 0 ? (
             <dl className="mt-3 grid gap-1 text-sm">
               <div className="flex justify-between gap-3">
@@ -323,8 +456,16 @@ export function OrderReview() {
                 Sign in to pay
               </Button>
             )}
-            <Button variant="outline" className="h-11 bg-background" render={<Link href="/order/menu" />}>
-              {draft.kind === "catering" ? "Edit catering" : "Edit meals"}
+            <Button variant="outline" className="h-11 bg-background" render={<Link href={editHref(draft.kind)} />}>
+              {draft.kind === "to_go"
+                ? "Edit To-Go order"
+                : draft.kind === "dabo_defo"
+                  ? "Edit Dabo / Defo"
+                  : draft.kind === "agelgel"
+                    ? "Edit Agelgel"
+                    : draft.kind === "catering"
+                      ? "Edit catering"
+                      : "Edit meals"}
             </Button>
           </div>
         </aside>

@@ -38,12 +38,29 @@ export function OrderSetup() {
   }, []);
 
   useEffect(() => {
+    const requested = params.get("kind");
+    if (requested === "to_go") {
+      router.replace("/order/to-go");
+      return;
+    }
+    if (requested === "dabo_defo") {
+      router.replace("/order/dabo-defo");
+      return;
+    }
+    if (requested === "agelgel") {
+      router.replace("/order/agelgel");
+      return;
+    }
+  }, [params, router]);
+
+  useEffect(() => {
     if (!hydrated || !settings) return;
     const requested = params.get("kind");
     const kind: OrderKind | null = requested === "catering" || requested === "weekly" ? requested : null;
     const table = params.get("table");
     const requestedTable: FastingPreference | null =
       table === "fasting" || table === "non_fasting" || table === "mixed" ? table : null;
+    // Weekly / catering links must win over a leftover To-Go or Dabo draft in localStorage.
     if (!draft) {
       const next = defaultDraft(settings, kind ?? "weekly");
       if (requestedTable) next.fastingPreference = requestedTable;
@@ -57,10 +74,10 @@ export function OrderSetup() {
       if (pendingKind.current) return;
       setDraft({
         ...defaultDraft(settings, kind),
-        fulfillment: draft.fulfillment,
-        fastingPreference: requestedTable ?? draft.fastingPreference,
+        fulfillment: kind === "weekly" || kind === "catering" ? draft.fulfillment : "pickup",
+        fastingPreference: requestedTable ?? (kind === "weekly" || kind === "catering" ? draft.fastingPreference : "fasting"),
         address: draft.address,
-        delivery: draft.delivery ?? null,
+        delivery: kind === "weekly" || kind === "catering" ? draft.delivery ?? null : null,
         lines: [],
       });
       return;

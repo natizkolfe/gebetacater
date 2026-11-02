@@ -110,21 +110,23 @@ export function MenuBuilder() {
   });
 
   function openNew(item: MenuItem) {
+    if (!draft || (draft.kind !== "weekly" && draft.kind !== "catering")) return;
     setEditing({
       item,
       lineId: null,
-      quantity: suggestedQuantity(item, draft as OrderDraft),
-      dayIndex: draft?.kind === "weekly" ? dayIndex : null,
-      mealSlot: draft?.kind === "weekly" ? "lunch" : null,
+      quantity: suggestedQuantity(item, draft),
+      dayIndex: draft.kind === "weekly" ? dayIndex : null,
+      mealSlot: draft.kind === "weekly" ? "lunch" : null,
       customization: initialCustomization(item, user?.preferences),
       days,
-      kind: draft?.kind ?? "weekly",
+      kind: draft.kind,
     });
   }
 
   function openExisting(line: DraftLine) {
     const item = menu?.find((entry) => entry.id === line.itemId);
     if (!item || !draft) return;
+    if (draft.kind !== "weekly" && draft.kind !== "catering") return;
     setEditing({
       item,
       lineId: line.lineId,

@@ -31,6 +31,9 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
 export const KIND_LABEL: Record<OrderKind, string> = {
   weekly: "Weekly meals",
   catering: "Catering",
+  to_go: "To-Go",
+  dabo_defo: "Dabo / Defo",
+  agelgel: "Agelgel",
 };
 
 export const FULFILLMENT_LABEL: Record<Fulfillment, string> = {

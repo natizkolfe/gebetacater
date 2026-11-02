@@ -13,15 +13,18 @@ function notice(partial: Omit<OrderNotice, "id" | "at" | "acknowledgedAt">, at: 
 
 export function serviceName(order: OrderRecord): string {
   if (order.kind === "catering") return "Catering";
+  if (order.kind === "to_go") return "To-Go";
+  if (order.kind === "dabo_defo") return "Dabo / Defo";
+  if (order.kind === "agelgel") return "Agelgel";
   return order.durationDays === 14 ? "Weekly Meal – 2 Weeks" : "Weekly Meal – 1 Week";
 }
 
 export function scheduledDate(order: OrderRecord): string {
-  return order.kind === "catering" ? (order.eventDate ?? "") : (order.startDate ?? "");
+  return order.kind === "weekly" ? (order.startDate ?? "") : (order.eventDate ?? "");
 }
 
 export function scheduledClock(order: OrderRecord): string {
-  if (order.kind === "catering" && order.eventTime) return order.eventTime;
+  if (order.kind !== "weekly" && order.eventTime) return order.eventTime;
   return "12:00";
 }
 

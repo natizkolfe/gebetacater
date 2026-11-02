@@ -18,6 +18,7 @@ export function SiteFooter() {
           <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
             Ethiopian meals for the week, and catering counted by the guest. Payment clears before anything is cooked.
           </p>
+          <p className="mt-3 text-sm text-muted-foreground">A Lulie Tech LLC company</p>
         </div>
         <div className="text-sm leading-6">
           <p className="font-medium">Kitchen</p>
@@ -37,6 +38,11 @@ export function SiteFooter() {
             ))}
           </div>
         </div>
+      </div>
+      <div className="border-t border-border">
+        <p className="mx-auto max-w-6xl px-4 py-4 text-xs text-muted-foreground sm:px-6">
+          © {new Date().getFullYear()} Lulie Tech LLC. All rights reserved.
+        </p>
       </div>
     </footer>
   );
