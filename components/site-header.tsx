@@ -64,10 +64,9 @@ function NavLinks({
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const { user, staff, ready } = useAuth();
+  const { user, ready } = useAuth();
   const [open, setOpen] = useState(false);
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");
-  const kitchenActive = pathname === "/admin" || pathname.startsWith("/admin/");
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-md print:hidden">
@@ -96,11 +95,6 @@ export function SiteHeader() {
           />
         </Suspense>
         <div className="ml-auto hidden items-center gap-2 md:flex">
-          {staff ? (
-            <Button variant="outline" className="h-9 bg-card px-3" render={<Link href="/admin" />}>
-              Kitchen
-            </Button>
-          ) : null}
           {ready && user ? (
             <Button variant="outline" className="h-9 bg-card px-3" render={<Link href="/account" />}>
               {user.name.split(" ")[0]}
@@ -155,18 +149,6 @@ export function SiteHeader() {
               >
                 Account
               </Link>
-              {staff ? (
-                <Link
-                  href="/admin"
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "rounded-md px-2 py-3 text-base text-muted-foreground hover:text-foreground",
-                    kitchenActive && "bg-card text-foreground",
-                  )}
-                >
-                  Kitchen
-                </Link>
-              ) : null}
             </nav>
           </SheetContent>
         </Sheet>

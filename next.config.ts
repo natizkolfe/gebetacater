@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Smaller production image for Docker / Railway (copies .next/standalone).
+  output: "standalone",
   // The site is opened at the LAN address, not localhost. Without this, the
   // dev live-reload socket is blocked and the page fully reloads, clearing inputs.
   allowedDevOrigins: ["10.0.0.91", "127.0.0.1", "*.trycloudflare.com"],

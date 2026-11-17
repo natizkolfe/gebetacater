@@ -1,87 +1,74 @@
 # Deploying Gebeta
 
-Gebeta is a Next.js app that stores every order, account, promo code, care sheet, and kitchen setting in one file: `data/db.json`. The server has to be a single long-running Node process with a disk that keeps that file. A host that throws the disk away after each request, or that runs several copies of the app at once, will lose or overwrite orders.
+Gebeta is a Next.js app. Orders, accounts, promo codes, care sheets, and kitchen settings live in one file: `db.json`.
 
-Payments and text messages are still a demo. A public link is for friends to try the site, not for taking real cards.
+**Deploy path:** Docker locally → Railway in production → Cloudflare for the custom domain.
 
-## What the server needs
+Do not use serverless hosts (for example Vercel). They wipe the filesystem between requests. Run **one replica only** so two processes never overwrite `db.json`.
 
-- Node.js 20 or newer. This project is developed on Node 24.
-- `npm install` once, from the project directory.
-- Outbound HTTPS, so delivery quotes can reach the US Census geocoder, OpenStreetMap Nominatim, and the public OSRM driving router.
-- One process only. Writes to `data/db.json` are queued inside that process. A second process writing the same file can drop an order.
-- A durable copy of `data/db.json`. It is listed in `.gitignore` and is not in git. Copy it yourself before you replace the server.
+Payments and SMS are still demo until Stripe/Twilio are wired.
 
-### Required environment variable
+## Environment
 
-`ADMIN_PASSWORD`
+| Variable | Purpose |
+|----------|---------|
+| `ADMIN_PASSWORD` | Kitchen portal at `/admin` (unlisted — open the URL directly) |
+| `DATA_DIR` | Folder for `db.json` (`/data` with the Docker/Railway volume) |
+| `PORT` | Injected by Railway/Docker; image default is `3000` |
 
-Configure a strong Admin password directly through the production hosting environment before starting Gebeta. Do not write that password into the source code, this document, a GitHub file, or a `NEXT_PUBLIC_` variable.
+Never commit `ADMIN_PASSWORD` or put it in a `NEXT_PUBLIC_` variable.
 
-On this computer, put the same variable in `.env.local` for `npm run dev`. That file is ignored by git. If `ADMIN_PASSWORD` is missing, the kitchen login is refused and the server log says `ADMIN_PASSWORD is not configured.` Customer ordering still runs.
+Local `npm run dev`: set `ADMIN_PASSWORD` in `.env.local`.
 
-Customer and staff sessions are random tokens stored as hashes in `data/db.json`. There is no separate session secret to configure.
+## Docker (local)
 
-## Share the app with friends
+```bash
+copy .env.example .env
+# set ADMIN_PASSWORD
+npm run docker:up
+```
 
-This is the setup used for a temporary public link. It serves the development server on this computer through a Cloudflare quick tunnel. The link works only while this computer is awake and both processes are still running. Starting the tunnel again creates a new address. The old address stops working.
+Open [http://localhost:47231](http://localhost:47231).
 
-1. Start the app if it is not already listening:
+Orders persist in the Docker volume `gebeta-data`. Stop with `npm run docker:down` (add `-v` only if you intend to wipe data).
+
+## Railway (production)
+
+1. Connect this repo. `railway.json` builds with the **Dockerfile**.
+2. Variables: `ADMIN_PASSWORD`, `DATA_DIR=/data`.
+3. Volume mounted at `/data`.
+4. Replicas = **1**. Healthcheck `/`.
+5. Smoke-test the public URL, then open `/admin` directly with the kitchen password.
+6. Redeploy once and confirm orders in `/data/db.json` survived.
+
+### Import existing data
+
+Copy your current `data/db.json` onto the Railway volume as `/data/db.json`, then restart the service.
+
+### Cloudflare + domain
+
+1. Confirm the app on `*.up.railway.app`.
+2. Cloudflare DNS for `gebetacater.com` → CNAME to Railway (proxy on).
+3. Add the custom domain in Railway.
+4. Bypass caching for `/api/*` and `/admin` if needed.
+
+## Temporary friend link (dev only)
 
 ```bash
 npm run dev
-```
-
-That binds port `47231` on all network interfaces. On this computer, open `http://127.0.0.1:47231`.
-
-2. Open the tunnel:
-
-```bash
 cloudflared tunnel --url http://127.0.0.1:47231 --no-autoupdate
 ```
 
-`cloudflared` is installed at `~/.local/bin/cloudflared`. The command prints an `https://….trycloudflare.com` address. That is the link to send. `next.config.ts` already allows `*.trycloudflare.com`, so the development server accepts requests from that host.
+Uses a temporary `*.trycloudflare.com` URL while this computer is awake. For LAN, add the machine’s address to `allowedDevOrigins` in `next.config.ts` if it is not already listed.
 
-3. Confirm the link before you send it. The page should show the Gebeta home page, including the plan-ahead notice.
+## What stays demo for now
 
-Friends on the same Wi-Fi can skip the tunnel and use this computer’s LAN address on port `47231`, for example `http://10.0.0.91:47231`. That address also has to be allowed in `allowedDevOrigins` in `next.config.ts`. `10.0.0.91` is already listed. A different LAN address needs to be added there, or the browser will reload the page and clear what someone is typing.
+- Checkout: `4242…` approves; numbers starting with `4000` decline.
+- Ready / out-for-delivery messages are stored on the order, not sent by SMS.
+- Delivery rate and lead time come from kitchen settings in `db.json`.
 
-Stop the tunnel with Ctrl-C in that terminal when you are done sharing. Leave `npm run dev` running if you are still working on the app.
+## Do not
 
-## Run a production build
-
-Use this when the site should stay up without the development server. Build first, then start. Do not run `npm run dev` and `next start` on the same port.
-
-Set `ADMIN_PASSWORD` in the hosting environment first, then:
-
-```bash
-npm install
-npm run build
-export PORT=47231
-npm start
-```
-
-`npm start` runs `next start`. The port comes from `PORT` and defaults to `3000`. The process listens on all interfaces.
-
-Put the same `data` directory next to the app so existing orders are still there. If `data/db.json` is missing, the first launch creates a new file with the seed menu and no orders.
-
-Check these URLs after it starts:
-
-- `/` shows the home page.
-- `/order?kind=weekly` and `/order?kind=catering` open the order forms. The earliest date is today plus the kitchen lead time, which is 5 days unless that setting was changed.
-- `/admin` asks for the kitchen password.
-
-To put this behind a public hostname, point a reverse proxy at `http://127.0.0.1:47231` and keep this one Node process running. Restarting the process is safe. Orders are on disk, not only in memory. Back up `data/db.json` before a restart or a deploy. The app writes that file through `data/db.json.tmp` and then renames it, so copy the finished `data/db.json`, not a `*.tmp` file.
-
-## What a deploy does not change
-
-These stay as they are until a later project replaces them:
-
-- Checkout accepts the demo card `4242 4242 4242 4242`. Numbers starting with `4000` are declined. No bank is charged.
-- Ready-for-pickup and out-for-delivery messages are stored on the order. They are not sent by SMS or email.
-- Delivery price is `$2` per driving mile from `4473 Rowland N Dr`, unless the kitchen settings say otherwise.
-- Lead time, guest limits, and the pickup note are kitchen settings in `data/db.json`, not environment variables. Change them at `/admin/settings` after the site is up.
-
-## What not to use
-
-Do not deploy this app to a serverless host that gives each request a fresh filesystem. Vercel, and hosts like it, will not keep `data/db.json`. Do not run more than one copy of the server against that file. Do not commit `data/db.json` or `.env` files. Do not delete `data/db.json` on a server that already has real orders. Deleting it wipes accounts, orders, promo codes, and care sheets and replaces them with the seed menu.
+- Commit `data/db.json` or `.env` files.
+- Run more than one server against the same `db.json`.
+- Delete production `db.json` (that wipes accounts, orders, promos, and care sheets).

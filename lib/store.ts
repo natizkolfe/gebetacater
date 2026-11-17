@@ -4,7 +4,14 @@ import { seedCareInstructions } from "@/lib/care-seed";
 import { seedMenu } from "@/lib/menu-seed";
 import type { Database, Settings } from "@/lib/types";
 
-const FILE = path.join(process.cwd(), "data", "db.json");
+/** Docker/Railway: set DATA_DIR=/data and mount a volume there so orders survive redeploys. */
+function dataDir(): string {
+  const fromEnv = process.env.DATA_DIR?.trim();
+  if (fromEnv) return path.resolve(fromEnv);
+  return path.join(process.cwd(), "data");
+}
+
+const FILE = path.join(dataDir(), "db.json");
 
 export const defaultSettings = (): Settings => ({
   minimumOrderLeadDays: 5,

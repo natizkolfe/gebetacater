@@ -6,7 +6,10 @@
     "dev": "next dev -p 47231 -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "docker:build": "docker build -t gebeta:local .",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

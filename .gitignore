@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# local portable Node / tooling (not part of the app)
+.tools/
 
 # vercel
 .vercel
@@ -43,3 +47,8 @@ next-env.d.ts
 # local kitchen data
 /data/db.json
 /data/*.tmp
+
+# legacy cPanel / TMD zip packages (Docker/Railway only now)
+/dist-cpanel/
+/dist-tmd/
+*.zip

@@ -11,9 +11,19 @@ npm install
 npm run dev
 ```
 
-Open [http://127.0.0.1:47231](http://127.0.0.1:47231). How to share that server, and how to run a production build, is in [DEPLOYMENT.md](DEPLOYMENT.md).
+Open [http://127.0.0.1:47231](http://127.0.0.1:47231).
 
-Orders, accounts, and menu edits are stored in `data/db.json`. That file is created on first launch and is not committed. Delete it to return to the seed menu and an empty order book.
+**Production-style (Docker)** — local and Railway:
+
+```bash
+copy .env.example .env
+# set ADMIN_PASSWORD in .env
+npm run docker:up
+```
+
+Then open [http://localhost:47231](http://localhost:47231). Railway + Cloudflare steps are in [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Orders, accounts, and menu edits are stored in `data/db.json` locally, or under `DATA_DIR` (`/data/db.json`) in Docker/Railway. That file is not committed. Delete it to return to the seed menu and an empty order book.
 
 ## Two ways to order
 
@@ -39,9 +49,13 @@ After payment the path is **Confirmed → Preparing → Ready → Picked up or D
 
 The code is created at payment and sent, in this demo, as an in-app text when staff mark the order ready. The customer sees that message and the code on the order. Wire a real SMS provider to the same message body later.
 
-## Kitchen
+## Kitchen (separate from the customer app)
 
-Open [the staff entrance](http://127.0.0.1:47231/admin). The kitchen password is the server environment variable `ADMIN_PASSWORD`. For local development, set it in `.env.local`, which git ignores. There is no default password. Session tokens are random and stored as hashes.
+The staff portal is **not** linked from the customer website or future App Store / Play Store builds. Kitchen staff open it directly:
+
+[http://127.0.0.1:47231/admin](http://127.0.0.1:47231/admin)
+
+The kitchen password is `ADMIN_PASSWORD` in `.env.local` / hosting env. There is no default password. Session tokens are random and stored as hashes.
 
 From the kitchen you can:
 

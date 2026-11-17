@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Outfit } from "next/font/google";
-import { HideOnCare } from "@/components/hide-on-care";
 import { Providers } from "@/components/providers";
+import { PublicChrome } from "@/components/public-chrome";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
@@ -34,13 +34,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col">
         <Providers>
-          <HideOnCare>
+          <PublicChrome>
             <SiteHeader />
-          </HideOnCare>
+          </PublicChrome>
           <main className="flex-1">{children}</main>
-          <HideOnCare>
+          <PublicChrome>
             <SiteFooter />
-          </HideOnCare>
+          </PublicChrome>
         </Providers>
       </body>
     </html>

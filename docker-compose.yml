@@ -1,0 +1,26 @@
+# Local production-style run (same shape as Railway).
+# Usage:
+#   copy .env.example → .env  (set ADMIN_PASSWORD)
+#   docker compose up --build
+#
+# App: http://localhost:47231
+# Orders survive rebuilds via the gebeta-data volume.
+
+services:
+  gebeta:
+    build: .
+    image: gebeta:local
+    ports:
+      - "47231:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      DATA_DIR: /data
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+    volumes:
+      - gebeta-data:/data
+    restart: unless-stopped
+
+volumes:
+  gebeta-data:
