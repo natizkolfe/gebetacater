@@ -36,11 +36,9 @@ RUN sed -i 's/\r$//' ./scripts/docker-entrypoint.sh \
   && chmod +x ./scripts/docker-entrypoint.sh
 
 # Entrypoint starts as root so it can chown the mounted volume, then drops to nextjs.
+# Do not add Dockerfile VOLUME — Railway bans it; attach a Railway volume at /data instead.
+# Healthcheck path is configured in railway.json (/).
 EXPOSE 3000
-VOLUME ["/data"]
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["./scripts/docker-entrypoint.sh"]
 CMD ["node", "server.js"]

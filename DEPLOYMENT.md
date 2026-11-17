@@ -36,7 +36,7 @@ Orders persist in the Docker volume `gebeta-data`. Stop with `npm run docker:dow
 
 1. Connect this repo. `railway.json` builds with the **Dockerfile**.
 2. Variables: `ADMIN_PASSWORD`, `DATA_DIR=/data`.
-3. Volume mounted at `/data`.
+3. Volume mounted at `/data` (in Railway UI — do **not** use `VOLUME` in the Dockerfile; Railway rejects that).
 4. Replicas = **1**. Healthcheck `/`.
 5. Smoke-test the public URL, then open `/admin` directly with the kitchen password.
 6. Redeploy once and confirm orders in `/data/db.json` survived.
