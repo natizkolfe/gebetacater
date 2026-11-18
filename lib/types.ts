@@ -142,6 +142,7 @@ export interface PrepCheck {
 export type NoticeKind =
   | "staff_new_order"
   | "customer_confirmation"
+  | "preparing_started"
   | "ready_pickup"
   | "out_for_delivery"
   | "thank_you"
@@ -164,9 +165,14 @@ export interface OrderRevision {
 }
 
 export interface OrderFeedback {
+  /** Overall experience 1–5 */
   rating: number;
   comment: string;
   at: string;
+  /** Optional topic ratings collected after pickup/delivery (website/app later too). */
+  foodRating: number | null;
+  deliveryRating: number | null;
+  websiteRating: number | null;
 }
 
 export interface OrderRecord {

@@ -105,6 +105,9 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const [error, setError] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [rating, setRating] = useState(0);
+  const [foodRating, setFoodRating] = useState(0);
+  const [deliveryRating, setDeliveryRating] = useState(0);
+  const [websiteRating, setWebsiteRating] = useState(0);
   const [comment, setComment] = useState("");
   const [feedbackPending, setFeedbackPending] = useState(false);
 
@@ -229,7 +232,8 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               <div className="mt-4 whitespace-pre-line text-sm leading-6">{notice.body}</div>
               {notice.kind === "thank_you" && !order.feedback ? (
                 <form
-                  className="mt-4 grid gap-3"
+                  id="feedback"
+                  className="mt-4 grid gap-4"
                   onSubmit={async (event) => {
                     event.preventDefault();
                     setFeedbackPending(true);
@@ -237,7 +241,13 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                     try {
                       const data = await api<{ order: OrderRecord }>(`/api/orders/${order.id}/feedback`, {
                         method: "POST",
-                        body: JSON.stringify({ rating, comment }),
+                        body: JSON.stringify({
+                          rating,
+                          comment,
+                          foodRating: foodRating || null,
+                          deliveryRating: order.fulfillment === "delivery" ? deliveryRating || null : null,
+                          websiteRating: websiteRating || null,
+                        }),
                       });
                       setOrder(data.order);
                     } catch (reason) {
@@ -247,25 +257,23 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                     }
                   }}
                 >
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        className={cn("text-2xl", star <= rating ? "text-primary" : "text-muted-foreground")}
-                        onClick={() => setRating(star)}
-                        aria-label={`${star} star${star === 1 ? "" : "s"}`}
-                      >
-                        {star <= rating ? "★" : "☆"}
-                      </button>
-                    ))}
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Tell us about the food, {order.fulfillment === "delivery" ? "delivery, " : ""}and the website or app.
+                    Overall rating is required; the rest are optional for now.
+                  </p>
+                  <StarRow label="Overall" value={rating} onChange={setRating} required />
+                  <StarRow label="Food" value={foodRating} onChange={setFoodRating} />
+                  {order.fulfillment === "delivery" ? (
+                    <StarRow label="Delivery" value={deliveryRating} onChange={setDeliveryRating} />
+                  ) : null}
+                  <StarRow label="Website / app" value={websiteRating} onChange={setWebsiteRating} />
                   <label className="grid gap-1 text-sm">
                     Comment, optional
                     <textarea
                       className="min-h-24 rounded-md border border-border bg-background px-3 py-2"
                       value={comment}
                       onChange={(event) => setComment(event.target.value)}
+                      placeholder="What went well? What should we improve?"
                     />
                   </label>
                   <Button type="submit" className="h-11 w-fit px-4" disabled={feedbackPending || rating < 1}>
@@ -274,7 +282,12 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                 </form>
               ) : null}
               {notice.kind === "thank_you" && order.feedback ? (
-                <p className="mt-3 text-sm">You rated this order {order.feedback.rating} of 5.</p>
+                <div className="mt-3 grid gap-1 text-sm">
+                  <p>Overall: {order.feedback.rating} of 5</p>
+                  {order.feedback.foodRating ? <p>Food: {order.feedback.foodRating} of 5</p> : null}
+                  {order.feedback.deliveryRating ? <p>Delivery: {order.feedback.deliveryRating} of 5</p> : null}
+                  {order.feedback.websiteRating ? <p>Website / app: {order.feedback.websiteRating} of 5</p> : null}
+                </div>
               ) : null}
             </section>
           ))}
@@ -426,6 +439,40 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="grid gap-1 border-t border-border pt-2">
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd>{value}</dd>
+    </div>
+  );
+}
+
+function StarRow({
+  label,
+  value,
+  onChange,
+  required = false,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  required?: boolean;
+}) {
+  return (
+    <div className="grid gap-1">
+      <p className="text-sm font-medium">
+        {label}
+        {required ? "" : " (optional)"}
+      </p>
+      <div className="flex gap-2">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            className={cn("text-2xl", star <= value ? "text-primary" : "text-muted-foreground")}
+            onClick={() => onChange(star === value ? 0 : star)}
+            aria-label={`${label} ${star} star${star === 1 ? "" : "s"}`}
+          >
+            {star <= value ? "★" : "☆"}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

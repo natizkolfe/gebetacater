@@ -67,6 +67,11 @@ function read(): Database {
       order.notices ??= [];
       order.revisions ??= [];
       order.feedback ??= null;
+      if (order.feedback) {
+        order.feedback.foodRating ??= null;
+        order.feedback.deliveryRating ??= null;
+        order.feedback.websiteRating ??= null;
+      }
       order.completedAt ??= null;
       order.promoCode ??= null;
       order.promoPercent ??= null;

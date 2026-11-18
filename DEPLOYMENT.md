@@ -15,6 +15,7 @@ Payments and SMS are still demo until Stripe/Twilio are wired.
 | `ADMIN_PASSWORD` | Kitchen portal at `/admin` |
 | `DATA_DIR` | Folder for `db.json` (`/data` with the Docker/Railway volume) |
 | `KITCHEN_HOST` | Hostname(s) for kitchen only (Railway URL and/or `kitchen.…`). Comma-separated. When set, customer hosts get 404 on `/admin`. |
+| `PUBLIC_APP_URL` | Customer site origin used in SMS / order notice links (e.g. `https://gebetacater-production.up.railway.app`) |
 | `PORT` | Injected by Railway/Docker; image default is `3000` |
 
 Never commit `ADMIN_PASSWORD` or put it in a `NEXT_PUBLIC_` variable.

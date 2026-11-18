@@ -288,7 +288,16 @@ export function StaffTicket({ orderId }: { orderId: string }) {
           </Section>
           {order.feedback ? (
             <Section title="Feedback">
-              <Fact label="Rating" value={`${order.feedback.rating} of 5`} />
+              <Fact label="Overall" value={`${order.feedback.rating} of 5`} />
+              <Fact label="Food" value={order.feedback.foodRating ? `${order.feedback.foodRating} of 5` : "—"} />
+              <Fact
+                label="Delivery"
+                value={order.feedback.deliveryRating ? `${order.feedback.deliveryRating} of 5` : "—"}
+              />
+              <Fact
+                label="Website / app"
+                value={order.feedback.websiteRating ? `${order.feedback.websiteRating} of 5` : "—"}
+              />
               <Fact label="Comment" value={order.feedback.comment || "No written comment"} />
             </Section>
           ) : null}

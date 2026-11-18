@@ -353,7 +353,10 @@ function FeedbackList({ orders }: { orders: OrderRecord[] }) {
         {rows.map((order) => (
           <li key={order.id} className="rounded-xl border border-border bg-card px-4 py-3 text-sm">
             <p className="font-medium">
-              {order.number} · {order.customerName} · {order.feedback?.rating} of 5
+              {order.number} · {order.customerName} · overall {order.feedback?.rating} of 5
+              {order.feedback?.foodRating ? ` · food ${order.feedback.foodRating}` : ""}
+              {order.feedback?.deliveryRating ? ` · delivery ${order.feedback.deliveryRating}` : ""}
+              {order.feedback?.websiteRating ? ` · site ${order.feedback.websiteRating}` : ""}
             </p>
             {order.feedback?.comment ? <p className="mt-1 text-muted-foreground">{order.feedback.comment}</p> : null}
           </li>

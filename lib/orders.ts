@@ -4,6 +4,7 @@ import {
   deliveryEnRouteNotice,
   orderUpdatedNotice,
   pickupReadyNotice,
+  preparingNotice,
   scheduledClock,
   scheduledDate,
   staffNewOrderNotice,
@@ -726,15 +727,17 @@ export function verificationCode(): string {
   return String(crypto.getRandomValues(new Uint32Array(1))[0] % 900000 + 100000);
 }
 
+function rememberSms(order: OrderRecord, message: { body: string }, now: string) {
+  order.smsSentAt = now;
+  order.smsBody = message.body;
+}
+
+/** Fallback SMS text if a ready notice body is not available yet. */
 export function buildSms(order: OrderRecord, settings: Settings): string {
-  const when =
-    order.kind === "weekly"
-      ? `${formatDate(order.startDate ?? "")} through ${formatDate(orderEndDate(order))}`
-      : `${formatDate(order.eventDate ?? "")} at ${formatTime(order.eventTime ?? "")}`;
-  const place =
-    order.fulfillment === "pickup" ? settings.pickupAddress : order.address;
-  const extra = order.fulfillment === "pickup" ? settings.pickupInstructions : settings.deliveryNote;
-  return `Gebeta: Hi ${order.customerName}, order ${order.number} is ready. Your verification code is ${order.verificationCode}. ${place}. ${when}. ${extra}`;
+  if (order.fulfillment === "pickup") {
+    return pickupReadyNotice(order, settings, new Date().toISOString()).body;
+  }
+  return deliveryEnRouteNotice(order, new Date().toISOString()).body;
 }
 
 export function payOrder(
@@ -794,7 +797,9 @@ export function payOrder(
   order.verificationCode = order.number;
   order.checks = buildChecks(order);
   captureCare(db, order, now);
-  order.notices.push(staffNewOrderNotice(order, now), confirmationNotice(order, now));
+  const confirmation = confirmationNotice(order, now);
+  order.notices.push(staffNewOrderNotice(order, now), confirmation);
+  rememberSms(order, confirmation, now);
   order.statusHistory.push({
     status: "confirmed",
     at: now,
@@ -887,24 +892,33 @@ export function transitionOrder(
   order.status = status;
   order.updatedAt = now;
   let historyNote = note.trim();
+  if (status === "preparing") {
+    const message = preparingNotice(order, now);
+    order.notices.push(message);
+    rememberSms(order, message, now);
+    historyNote = historyNote || "Preparation started. The customer was notified.";
+  }
   if (status === "ready" && order.fulfillment === "pickup") {
     const message = pickupReadyNotice(order, db.settings, now);
     order.notices.push(message);
-    order.smsSentAt = now;
-    order.smsBody = message.body;
+    rememberSms(order, message, now);
     historyNote = historyNote || "Marked ready for pickup. The customer was notified with the order ID.";
   }
   if (status === "ready" && order.fulfillment === "delivery") {
     historyNote = historyNote || "Ready for delivery. The customer is notified when the order leaves.";
   }
   if (status === "out_for_delivery") {
-    order.notices.push(deliveryEnRouteNotice(order, now));
-    historyNote = historyNote || "Out for delivery. The customer was notified that the order is on the way.";
+    const message = deliveryEnRouteNotice(order, now);
+    order.notices.push(message);
+    rememberSms(order, message, now);
+    historyNote = historyNote || "Out for delivery. The customer was notified that the driver is on the way.";
   }
   if (status === "completed" || status === "picked_up" || status === "delivered") {
     order.completedAt = order.completedAt ?? now;
     if (!order.notices.some((entry) => entry.kind === "thank_you")) {
-      order.notices.push(thankYouNotice(order, now));
+      const message = thankYouNotice(order, now);
+      order.notices.push(message);
+      rememberSms(order, message, now);
     }
     historyNote = historyNote || (order.fulfillment === "pickup" ? "Picked up and completed." : "Delivered and completed.");
   }
@@ -1105,17 +1119,44 @@ export function acknowledgeOrder(order: OrderRecord): void {
   order.updatedAt = now;
 }
 
-export function saveFeedback(order: OrderRecord, rating: number, comment: string): void {
+function topicRating(value: unknown, label: string): number | null {
+  if (value == null || value === "") return null;
+  const rating = Number(value);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new OrderError(`Choose a ${label} rating from 1 to 5, or leave it blank.`);
+  }
+  return rating;
+}
+
+export function saveFeedback(
+  order: OrderRecord,
+  input: {
+    rating: number;
+    comment?: string;
+    foodRating?: number | null;
+    deliveryRating?: number | null;
+    websiteRating?: number | null;
+  },
+): void {
   if (!["picked_up", "delivered", "completed"].includes(order.status)) {
     throw new OrderError("Feedback opens after the order is picked up or delivered.");
   }
   if (order.feedback) throw new OrderError("Feedback is already on this order.");
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    throw new OrderError("Choose a rating from 1 to 5.");
+  if (!Number.isInteger(input.rating) || input.rating < 1 || input.rating > 5) {
+    throw new OrderError("Choose an overall rating from 1 to 5.");
   }
-  const text = comment.trim();
+  const text = (input.comment ?? "").trim();
   if (text.length > 800) throw new OrderError("Keep the comment under 800 characters.");
-  order.feedback = { rating, comment: text, at: new Date().toISOString() };
+  const deliveryRating =
+    order.fulfillment === "delivery" ? topicRating(input.deliveryRating, "delivery") : null;
+  order.feedback = {
+    rating: input.rating,
+    comment: text,
+    at: new Date().toISOString(),
+    foodRating: topicRating(input.foodRating, "food"),
+    deliveryRating,
+    websiteRating: topicRating(input.websiteRating, "website or app"),
+  };
   order.updatedAt = order.feedback.at;
 }
 

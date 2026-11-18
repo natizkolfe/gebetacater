@@ -12,7 +12,13 @@ export async function POST(request: Request, context: IdContext) {
     const order = await withDb((db) => {
       const found = db.orders.find((entry) => entry.id === id && entry.userId === auth.user?.id);
       if (!found) throw new OrderError("Order not found.", 404);
-      saveFeedback(found, Number(body.rating), String(body.comment ?? ""));
+      saveFeedback(found, {
+        rating: Number(body.rating),
+        comment: String(body.comment ?? ""),
+        foodRating: body.foodRating == null || body.foodRating === "" ? null : Number(body.foodRating),
+        deliveryRating: body.deliveryRating == null || body.deliveryRating === "" ? null : Number(body.deliveryRating),
+        websiteRating: body.websiteRating == null || body.websiteRating === "" ? null : Number(body.websiteRating),
+      });
       return found;
     });
     return Response.json({ order: toCustomerOrder(order) });
