@@ -1,4 +1,5 @@
 import { addDays, formatDate, formatTime, formatWhen, isIsoDate, todayISO, zonedDateTime } from "@/lib/dates";
+import { dispatchCustomerSms } from "@/lib/notify";
 import {
   confirmationNotice,
   deliveryEnRouteNotice,
@@ -730,6 +731,7 @@ export function verificationCode(): string {
 function rememberSms(order: OrderRecord, message: { body: string }, now: string) {
   order.smsSentAt = now;
   order.smsBody = message.body;
+  void dispatchCustomerSms(order, message.body);
 }
 
 /** Fallback SMS text if a ready notice body is not available yet. */

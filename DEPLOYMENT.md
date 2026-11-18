@@ -6,7 +6,7 @@ Gebeta is a Next.js app. Orders, accounts, promo codes, care sheets, and kitchen
 
 Do not use serverless hosts (for example Vercel). They wipe the filesystem between requests. Run **one replica only** so two processes never overwrite `db.json`.
 
-Payments and SMS are still demo until Stripe/Twilio are wired.
+Payments are still demo until Stripe is wired. Order SMS uses Twilio Messaging when configured.
 
 ## Environment
 
@@ -16,9 +16,18 @@ Payments and SMS are still demo until Stripe/Twilio are wired.
 | `DATA_DIR` | Folder for `db.json` (`/data` with the Docker/Railway volume) |
 | `KITCHEN_HOST` | Hostname(s) for kitchen only (Railway URL and/or `kitchen.…`). Comma-separated. When set, customer hosts get 404 on `/admin`. |
 | `PUBLIC_APP_URL` | Customer site origin used in SMS / order notice links (e.g. `https://gebetacater-production.up.railway.app`) |
+| `TWILIO_ACCOUNT_SID` | Twilio Account SID (Messaging — same account as Sabu) |
+| `TWILIO_AUTH_TOKEN` | Twilio Auth Token (server only) |
+| `TWILIO_FROM_NUMBER` | Twilio sender number in E.164 (e.g. `+1737…`) |
 | `PORT` | Injected by Railway/Docker; image default is `3000` |
 
-Never commit `ADMIN_PASSWORD` or put it in a `NEXT_PUBLIC_` variable.
+Never commit `ADMIN_PASSWORD`, Twilio tokens, or put secrets in a `NEXT_PUBLIC_` variable.
+
+### Twilio order SMS
+
+Uses **Messaging** (custom body), not Twilio Verify (OTP). Reuse Sabu’s `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER` on the **gebetacater** service. Trial accounts often reject custom Body SMS — the Sabu account must be upgraded (or Messaging approved) for production texts.
+
+SMS fires on: paid confirmation, preparing, ready for pickup, out for delivery, thank-you. If Twilio is unset or fails, in-app notices still work and kitchen flow continues.
 
 **One Railway service** runs both storefront and kitchen (shared `db.json`). Do not split into two Railway services — volumes and the file store are not shared across services.
 
@@ -80,7 +89,7 @@ Uses a temporary `*.trycloudflare.com` URL while this computer is awake. For LAN
 ## What stays demo for now
 
 - Checkout: `4242…` approves; numbers starting with `4000` decline.
-- Ready / out-for-delivery messages are stored on the order, not sent by SMS.
+- Order status SMS sends via Twilio when `TWILIO_*` is set; otherwise notices stay in-app only.
 - Delivery rate and lead time come from kitchen settings in `db.json`.
 
 ## Do not
