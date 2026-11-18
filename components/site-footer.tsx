@@ -6,6 +6,8 @@ const ORDER_LINKS = [
   { href: "/menu", label: "Packages" },
   { href: "/order?kind=weekly", label: "Weekly meal preparation" },
   { href: "/order?kind=catering", label: "Catering by guest count" },
+  { href: "/about", label: "About Gebeta" },
+  { href: "/about#faq", label: "FAQ" },
 ];
 
 export function SiteFooter() {

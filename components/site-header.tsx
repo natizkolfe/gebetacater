@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/menu", label: "Packages" },
   { href: "/order?kind=weekly", label: "Weekly meals" },
   { href: "/order?kind=catering", label: "Catering" },
+  { href: "/about", label: "About" },
   { href: "/orders", label: "Your orders" },
 ];
 
