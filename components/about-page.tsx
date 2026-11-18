@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { PageIntro, Shell } from "@/components/page-intro";
-import { Button } from "@/components/ui/button";
 import type { AboutBlock, AboutPageContent, FaqItem } from "@/lib/about-content";
 
 function Section({ block }: { block: AboutBlock }) {
@@ -54,18 +52,6 @@ export function AboutPageView({ content }: { content: AboutPageContent }) {
         <Section block={content.mission} />
 
         <p className="max-w-3xl font-display text-2xl leading-snug text-balance sm:text-3xl">{content.tagline}</p>
-
-        <div className="flex flex-wrap gap-3">
-          <Button className="h-11 px-4" render={<Link href="/order?kind=weekly" />}>
-            Plan weekly meals
-          </Button>
-          <Button variant="outline" className="h-11 bg-card px-4" render={<Link href="/order?kind=catering" />}>
-            Cater a gathering
-          </Button>
-          <Button variant="outline" className="h-11 bg-card px-4" render={<Link href="/menu" />}>
-            View packages
-          </Button>
-        </div>
 
         <FaqList faqs={content.faqs} />
       </div>
