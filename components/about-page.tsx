@@ -1,5 +1,5 @@
 import { PageIntro, Shell } from "@/components/page-intro";
-import type { AboutBlock, AboutPageContent, FaqItem } from "@/lib/about-content";
+import type { AboutBlock, AboutFaqItem, AboutPageContent } from "@/lib/about-content";
 
 function Section({ block }: { block: AboutBlock }) {
   return (
@@ -18,13 +18,13 @@ function Section({ block }: { block: AboutBlock }) {
   );
 }
 
-function FaqList({ faqs }: { faqs: FaqItem[] }) {
+function FaqList({ faqs }: { faqs: AboutFaqItem[] }) {
   return (
     <section id="faq" className="border-t border-border pt-10">
       <p className="text-xs tracking-[0.16em] text-primary uppercase">FAQ</p>
       <h2 className="mt-2 font-display text-3xl sm:text-4xl">Questions we hear often</h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-        Kitchen staff will be able to edit these answers from the admin portal soon. For now, here is what most customers ask.
+        Common questions about ordering with Gebeta.
       </p>
       <dl className="mt-8 grid gap-6">
         {faqs.map((item) => (

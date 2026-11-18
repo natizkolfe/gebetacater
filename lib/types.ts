@@ -369,6 +369,36 @@ export interface CareSnapshot {
   foods: CareFoodSnapshot[];
 }
 
+export type AboutBlock = {
+  id: string;
+  eyebrow?: string;
+  title: string;
+  paragraphs: string[];
+  closing?: string;
+};
+
+export type AboutFaqItem = {
+  id: string;
+  question: string;
+  answer: string;
+};
+
+export type AboutPageContent = {
+  hero: {
+    eyebrow: string;
+    title: string;
+    lede: string;
+  };
+  intro: AboutBlock;
+  cooks: AboutBlock;
+  philosophy: AboutBlock;
+  mealPrep: AboutBlock;
+  catering: AboutBlock;
+  mission: AboutBlock;
+  tagline: string;
+  faqs: AboutFaqItem[];
+};
+
 export interface Database {
   users: UserRecord[];
   sessions: SessionRecord[];
@@ -377,6 +407,7 @@ export interface Database {
   careInstructions: CareInstruction[];
   menu: MenuItem[];
   settings: Settings;
+  about: AboutPageContent;
   seq: number;
 }
 

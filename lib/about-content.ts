@@ -1,40 +1,8 @@
-/**
- * About + FAQ copy for the public site.
- * Shaped for a future kitchen admin editor (ids + plain fields → db.json).
- * For now this module is the source of truth.
- */
+import type { AboutBlock, AboutFaqItem, AboutPageContent } from "@/lib/types";
 
-export type AboutBlock = {
-  id: string;
-  eyebrow?: string;
-  title: string;
-  paragraphs: string[];
-  closing?: string;
-};
+export type { AboutBlock, AboutFaqItem, AboutPageContent };
 
-export type FaqItem = {
-  id: string;
-  question: string;
-  answer: string;
-};
-
-export type AboutPageContent = {
-  hero: {
-    eyebrow: string;
-    title: string;
-    lede: string;
-  };
-  intro: AboutBlock;
-  cooks: AboutBlock;
-  philosophy: AboutBlock;
-  mealPrep: AboutBlock;
-  catering: AboutBlock;
-  mission: AboutBlock;
-  tagline: string;
-  faqs: FaqItem[];
-};
-
-export const defaultAboutContent: AboutPageContent = {
+export const defaultAboutContent = (): AboutPageContent => ({
   hero: {
     eyebrow: "About Gebeta",
     title: "Authentic Ethiopian flavors, made with love",
@@ -131,9 +99,88 @@ export const defaultAboutContent: AboutPageContent = {
         "Paid orders can usually be modified online until the modification window closes, typically within 24 hours of the scheduled date. Open Your orders to see what is still available to change.",
     },
   ],
+});
+
+function asString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function asParagraphs(value: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(value)) return fallback;
+  const next = value.map((entry) => asString(entry).trim()).filter(Boolean);
+  return next.length ? next : fallback;
+}
+
+function normalizeBlock(raw: unknown, fallback: AboutBlock): AboutBlock {
+  const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    id: asString(source.id, fallback.id),
+    eyebrow: asString(source.eyebrow, fallback.eyebrow ?? "") || undefined,
+    title: asString(source.title, fallback.title),
+    paragraphs: asParagraphs(source.paragraphs, fallback.paragraphs),
+    closing: asString(source.closing, fallback.closing ?? "") || undefined,
+  };
+}
+
+function normalizeFaq(raw: unknown, index: number): AboutFaqItem | null {
+  if (!raw || typeof raw !== "object") return null;
+  const source = raw as Record<string, unknown>;
+  const question = asString(source.question).trim();
+  const answer = asString(source.answer).trim();
+  if (!question || !answer) return null;
+  return {
+    id: asString(source.id, `faq_${index + 1}`),
+    question,
+    answer,
+  };
+}
+
+/** Merge partial/legacy payloads onto the default About page. */
+export function normalizeAboutContent(raw: unknown): AboutPageContent {
+  const fallback = defaultAboutContent();
+  if (!raw || typeof raw !== "object") return fallback;
+  const source = raw as Record<string, unknown>;
+  const hero = source.hero && typeof source.hero === "object" ? (source.hero as Record<string, unknown>) : {};
+  const faqs = Array.isArray(source.faqs)
+    ? source.faqs.map((entry, index) => normalizeFaq(entry, index)).filter((entry): entry is AboutFaqItem => Boolean(entry))
+    : fallback.faqs;
+
+  return {
+    hero: {
+      eyebrow: asString(hero.eyebrow, fallback.hero.eyebrow),
+      title: asString(hero.title, fallback.hero.title),
+      lede: asString(hero.lede, fallback.hero.lede),
+    },
+    intro: normalizeBlock(source.intro, fallback.intro),
+    cooks: normalizeBlock(source.cooks, fallback.cooks),
+    philosophy: normalizeBlock(source.philosophy, fallback.philosophy),
+    mealPrep: normalizeBlock(source.mealPrep, fallback.mealPrep),
+    catering: normalizeBlock(source.catering, fallback.catering),
+    mission: normalizeBlock(source.mission, fallback.mission),
+    tagline: asString(source.tagline, fallback.tagline),
+    faqs: faqs.length ? faqs : fallback.faqs,
+  };
+}
+
+export const ABOUT_SECTION_KEYS = ["intro", "cooks", "philosophy", "mealPrep", "catering", "mission"] as const;
+export type AboutSectionKey = (typeof ABOUT_SECTION_KEYS)[number];
+
+export const ABOUT_SECTION_LABELS: Record<AboutSectionKey, string> = {
+  intro: "Introduction",
+  cooks: "Meet our cooks",
+  philosophy: "Food philosophy",
+  mealPrep: "Weekly meal prep",
+  catering: "Catering",
+  mission: "Mission",
 };
 
-/** Future admin loaders can replace this with db.json content. */
-export function getAboutContent(): AboutPageContent {
-  return defaultAboutContent;
+export function paragraphsToText(paragraphs: string[]): string {
+  return paragraphs.join("\n\n");
+}
+
+export function textToParagraphs(value: string): string[] {
+  return value
+    .split(/\n\s*\n/)
+    .map((part) => part.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
 }

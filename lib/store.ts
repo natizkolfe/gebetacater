@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { defaultAboutContent, normalizeAboutContent } from "@/lib/about-content";
 import { seedCareInstructions } from "@/lib/care-seed";
 import { seedMenu } from "@/lib/menu-seed";
 import type { Database, Settings } from "@/lib/types";
@@ -43,6 +44,7 @@ function seed(): Database {
     careInstructions: seedCareInstructions(),
     menu: seedMenu(),
     settings: defaultSettings(),
+    about: defaultAboutContent(),
     seq: 1047,
   };
 }
@@ -62,6 +64,7 @@ function read(): Database {
     parsed.settings = { ...defaultSettings(), ...parsed.settings };
     parsed.promoCodes ??= [];
     parsed.careInstructions ??= seedCareInstructions();
+    parsed.about = normalizeAboutContent(parsed.about);
     for (const order of parsed.orders ?? []) {
       order.checks ??= [];
       order.notices ??= [];

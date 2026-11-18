@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { AboutPageView } from "@/components/about-page";
-import { getAboutContent } from "@/lib/about-content";
+import { normalizeAboutContent } from "@/lib/about-content";
+import { readDb } from "@/lib/store";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "About",
@@ -9,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function AboutPage() {
-  return <AboutPageView content={getAboutContent()} />;
+  return <AboutPageView content={normalizeAboutContent(readDb().about)} />;
 }
