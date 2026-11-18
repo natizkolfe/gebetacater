@@ -12,11 +12,14 @@ Payments and SMS are still demo until Stripe/Twilio are wired.
 
 | Variable | Purpose |
 |----------|---------|
-| `ADMIN_PASSWORD` | Kitchen portal at `/admin` (unlisted — open the URL directly) |
+| `ADMIN_PASSWORD` | Kitchen portal at `/admin` |
 | `DATA_DIR` | Folder for `db.json` (`/data` with the Docker/Railway volume) |
+| `KITCHEN_HOST` | Hostname(s) for kitchen only (Railway URL and/or `kitchen.…`). Comma-separated. When set, customer hosts get 404 on `/admin`. |
 | `PORT` | Injected by Railway/Docker; image default is `3000` |
 
 Never commit `ADMIN_PASSWORD` or put it in a `NEXT_PUBLIC_` variable.
+
+**One Railway service** runs both storefront and kitchen (shared `db.json`). Do not split into two Railway services — volumes and the file store are not shared across services.
 
 Local `npm run dev`: set `ADMIN_PASSWORD` in `.env.local`.
 
@@ -37,9 +40,21 @@ Orders persist in the Docker volume `gebeta-data`. Stop with `npm run docker:dow
 1. Connect this repo. `railway.json` builds with the **Dockerfile**.
 2. Variables: `ADMIN_PASSWORD`, `DATA_DIR=/data`.
 3. Volume mounted at `/data` (in Railway UI — do **not** use `VOLUME` in the Dockerfile; Railway rejects that).
-4. Replicas = **1**. Healthcheck `/`.
-5. Smoke-test the public URL, then open `/admin` directly with the kitchen password.
+4. Replicas = **1**. Healthcheck `/api/health`.
+5. Smoke-test the public URL, then open `/admin` with the kitchen password.
 6. Redeploy once and confirm orders in `/data/db.json` survived.
+
+### Separate kitchen host (like Sabu)
+
+Keep **one** Railway service. Staff use a different hostname than customers:
+
+1. Note the Railway URL (`something.up.railway.app`) — this becomes the kitchen bookmark, **or** add `kitchen.yourdomain.com` as a second Railway domain.
+2. Set `KITCHEN_HOST` to that kitchen hostname (comma-separate if you use more than one).
+3. Point the customer domain (`gebetacater.com`) at the same Railway service.
+4. On the kitchen host, `/` redirects to `/admin`. On the customer host, `/admin` returns 404.
+5. Staff bookmark the kitchen URL only; customers never see a staff link.
+
+Until you have a customer domain, leave `KITCHEN_HOST` unset so `/admin` still works on the Railway URL.
 
 ### Import existing data
 
@@ -47,10 +62,10 @@ Copy your current `data/db.json` onto the Railway volume as `/data/db.json`, the
 
 ### Cloudflare + domain
 
-1. Confirm the app on `*.up.railway.app`.
-2. Cloudflare DNS for `gebetacater.com` → CNAME to Railway (proxy on).
-3. Add the custom domain in Railway.
-4. Bypass caching for `/api/*` and `/admin` if needed.
+1. Confirm the app on `*.up.railway.app` (kitchen bookmark until a kitchen subdomain exists).
+2. Cloudflare DNS for `gebetacater.com` → CNAME to Railway (proxy on). Optional: `kitchen.gebetacater.com` → same target.
+3. Add both domains in Railway. Set `KITCHEN_HOST` to the kitchen hostname(s).
+4. Bypass caching for `/api/*` (and the kitchen host if proxied).
 
 ## Temporary friend link (dev only)
 

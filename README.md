@@ -53,7 +53,8 @@ The code is created at payment and sent, in this demo, as an in-app text when st
 
 The staff portal is **not** linked from the customer website or future App Store / Play Store builds. Kitchen staff open it directly:
 
-[http://127.0.0.1:47231/admin](http://127.0.0.1:47231/admin)
+- Local: [http://127.0.0.1:47231/admin](http://127.0.0.1:47231/admin)
+- Railway: set `KITCHEN_HOST` to the Railway (or `kitchen.…`) hostname and bookmark that URL — customer domains return 404 for `/admin`
 
 The kitchen password is `ADMIN_PASSWORD` in `.env.local` / hosting env. There is no default password. Session tokens are random and stored as hashes.
 
