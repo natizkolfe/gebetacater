@@ -139,11 +139,146 @@ export function priceDelivery(miles: number, settings: Pick<Settings, "deliveryR
   return roundMoney(Math.max(calculated, settings.minDeliveryFee));
 }
 
-export async function suggestAddresses(query: string): Promise<string[]> {
+function houseNumberFromQuery(query: string): string | null {
+  return query.trim().match(/^(\d+[A-Za-z]?)\b/)?.[1] ?? null;
+}
+
+function photonLabel(
+  properties: {
+    name?: string;
+    housenumber?: string;
+    street?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    locality?: string;
+    county?: string;
+    state?: string;
+    postcode?: string;
+    country?: string;
+  },
+  typedHouse?: string | null,
+): string | null {
+  const place = properties.city || properties.town || properties.village || properties.locality || properties.county;
+  const road = properties.street || properties.name;
+  if (!road && !properties.name) return null;
+  const house = properties.housenumber || typedHouse || null;
+  const street = house && road ? `${house} ${road}` : road || properties.name;
+  const parts = [street, place, properties.state, properties.postcode].filter(Boolean);
+  const label = parts.join(", ").replace(/\s+/g, " ").trim();
+  return label.length >= 5 ? label : null;
+}
+
+async function photonSuggest(
+  query: string,
+  bias: { lat: number; lon: number } | null,
+): Promise<string[]> {
+  const url = new URL("https://photon.komoot.io/api/");
+  url.searchParams.set("q", query);
+  url.searchParams.set("limit", "6");
+  url.searchParams.set("lang", "en");
+  if (bias) {
+    url.searchParams.set("lat", String(bias.lat));
+    url.searchParams.set("lon", String(bias.lon));
+  }
+  const response = await fetch(url, {
+    headers: { accept: "application/json", "user-agent": USER_AGENT },
+    signal: AbortSignal.timeout(4500),
+  });
+  if (!response.ok) return [];
+  const data = (await response.json()) as {
+    features?: {
+      properties?: {
+        name?: string;
+        housenumber?: string;
+        street?: string;
+        city?: string;
+        town?: string;
+        village?: string;
+        locality?: string;
+        county?: string;
+        state?: string;
+        postcode?: string;
+        country?: string;
+        countrycode?: string;
+      };
+    }[];
+  };
+  const typedHouse = houseNumberFromQuery(query);
+  const labels: string[] = [];
+  const seen = new Set<string>();
+  for (const feature of data.features ?? []) {
+    const properties = feature.properties;
+    if (!properties) continue;
+    if (properties.countrycode && properties.countrycode.toLowerCase() !== "us") continue;
+    const label = photonLabel(properties, typedHouse);
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    labels.push(label);
+    if (labels.length >= 5) break;
+  }
+  return labels;
+}
+
+async function nominatimSuggest(query: string, bias: { lat: number; lon: number } | null): Promise<string[]> {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("limit", "6");
+  url.searchParams.set("countrycodes", "us");
+  url.searchParams.set("q", query);
+  if (bias) {
+    const pad = 0.45;
+    url.searchParams.set(
+      "viewbox",
+      `${bias.lon - pad},${bias.lat + pad},${bias.lon + pad},${bias.lat - pad}`,
+    );
+    url.searchParams.set("bounded", "0");
+  }
+  const response = await fetch(url, {
+    headers: { accept: "application/json", "user-agent": USER_AGENT },
+    signal: AbortSignal.timeout(4500),
+  });
+  if (!response.ok) return [];
+  const data = (await response.json()) as GeocodeHit[];
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter((hit) => Boolean(hit.display_name && hit.lat && hit.lon))
+    .map((hit) => hit.display_name as string)
+    .slice(0, 5);
+}
+
+/** Typeahead suggestions biased toward the kitchen — Photon first, Nominatim fallback. */
+export async function suggestAddresses(
+  query: string,
+  settings?: Pick<Settings, "deliveryOrigin">,
+): Promise<string[]> {
   const trimmed = query.trim();
-  if (trimmed.length < 5) return [];
-  const hits = await geocode(trimmed, 5);
-  return hits.filter(usable).map((hit) => hit.display_name).slice(0, 5);
+  if (trimmed.length < 3) return [];
+
+  let bias: { lat: number; lon: number } | null = null;
+  if (settings?.deliveryOrigin) {
+    try {
+      bias = await originPoint(settings.deliveryOrigin);
+    } catch {
+      bias = null;
+    }
+  }
+
+  // Photon is built for typeahead; keep the typed query and bias by kitchen coords.
+  const photon = await photonSuggest(trimmed, bias);
+  if (photon.length > 0) return photon;
+
+  // Nominatim often needs a city/state hint for partial US streets.
+  const localized =
+    /\b(ga|georgia|stone mountain|atlanta|decatur|lithonia|clarkston)\b/i.test(trimmed)
+      ? trimmed
+      : `${trimmed}, Stone Mountain, GA`;
+  const near = await nominatimSuggest(localized, bias);
+  if (near.length > 0) return near;
+  return nominatimSuggest(trimmed, bias);
 }
 
 /** Driving distance from the configured kitchen location. Does not add anything to an order. */

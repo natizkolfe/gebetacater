@@ -106,6 +106,7 @@ function DeliveryPanel({
 }) {
   const [address, setAddress] = useState(initialAddress);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggesting, setSuggesting] = useState(false);
   const [quote, setQuote] = useState<DeliveryQuote | null>(accepted);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -116,36 +117,44 @@ function DeliveryPanel({
   }, [initialAddress, accepted]);
 
   useEffect(() => {
-    if (quote || address.trim().length < 5) {
+    const q = address.trim();
+    if (quote || q.length < 3) {
       setSuggestions([]);
+      setSuggesting(false);
       return;
     }
-    let cancelled = false;
+    const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      const params = new URLSearchParams({ q: address.trim() });
-      fetch(`/api/delivery/suggest?${params}`)
+      setSuggesting(true);
+      const params = new URLSearchParams({ q });
+      fetch(`/api/delivery/suggest?${params}`, { signal: controller.signal })
         .then((response) => response.json())
         .then((data: { suggestions?: string[] }) => {
-          if (!cancelled) setSuggestions(data.suggestions ?? []);
+          setSuggestions(data.suggestions ?? []);
         })
-        .catch(() => {
-          if (!cancelled) setSuggestions([]);
+        .catch((reason: unknown) => {
+          if (reason instanceof DOMException && reason.name === "AbortError") return;
+          setSuggestions([]);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setSuggesting(false);
         });
-    }, 400);
+    }, 220);
     return () => {
-      cancelled = true;
+      controller.abort();
       window.clearTimeout(timer);
     };
   }, [address, quote]);
 
-  async function calculate() {
+  async function calculate(nextAddress = address) {
     setPending(true);
     setError("");
     setQuote(null);
+    setSuggestions([]);
     try {
       const data = await api<{ quote: DeliveryQuote }>("/api/delivery/quote", {
         method: "POST",
-        body: JSON.stringify({ address }),
+        body: JSON.stringify({ address: nextAddress }),
       });
       setQuote(data.quote);
       setAddress(data.quote.address);
@@ -168,37 +177,51 @@ function DeliveryPanel({
         }}
       >
         <Label htmlFor="delivery-address">Enter delivery address</Label>
-        <Input
-          id="delivery-address"
-          value={address}
-          autoComplete="street-address"
-          placeholder="Street, city, and ZIP code"
-          className="h-11 bg-card px-3"
-          onChange={(event) => {
-            setAddress(event.target.value);
-            setQuote(null);
-          }}
-        />
-        {suggestions.length > 0 ? (
-          <ul className="grid gap-1">
-            {suggestions.map((suggestion) => (
-              <li key={suggestion}>
-                <button
-                  type="button"
-                  className="w-full rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted"
-                  onClick={() => {
-                    setAddress(suggestion);
-                    setQuote(null);
-                    setSuggestions([]);
-                  }}
-                >
-                  {suggestion}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        <Button type="submit" variant="outline" className="h-10 w-fit bg-card" disabled={pending}>
+        <div className="relative">
+          <Input
+            id="delivery-address"
+            value={address}
+            autoComplete="street-address"
+            placeholder="Start typing street, city, or ZIP"
+            className="h-11 bg-card px-3"
+            role="combobox"
+            aria-expanded={suggestions.length > 0}
+            aria-controls="delivery-address-suggestions"
+            aria-autocomplete="list"
+            onChange={(event) => {
+              setAddress(event.target.value);
+              setQuote(null);
+              setError("");
+            }}
+          />
+          {suggesting ? (
+            <p className="mt-1 text-xs text-muted-foreground">Searching addresses…</p>
+          ) : null}
+          {suggestions.length > 0 ? (
+            <ul
+              id="delivery-address-suggestions"
+              role="listbox"
+              className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-card py-1 shadow-sm"
+            >
+              {suggestions.map((suggestion) => (
+                <li key={suggestion} role="option">
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm leading-5 text-foreground hover:bg-muted"
+                    onClick={() => {
+                      setAddress(suggestion);
+                      setSuggestions([]);
+                      void calculate(suggestion);
+                    }}
+                  >
+                    {suggestion}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+        <Button type="submit" variant="outline" className="h-10 w-fit bg-card" disabled={pending || address.trim().length < 5}>
           {pending ? "Calculating…" : "Calculate delivery fee"}
         </Button>
       </form>
